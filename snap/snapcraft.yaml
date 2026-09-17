@@ -1,0 +1,83 @@
+name: keepassxc
+adopt-info: keepassxc
+grade: stable
+base: core22
+confinement: strict
+compression: lzo
+
+apps:
+  keepassxc:
+    command: usr/bin/keepassxc
+    common-id: org.keepassxc.KeePassXC.desktop
+    extensions: [kde-neon]
+    plugs: [home, unity7, network, network-bind, removable-media, raw-usb, password-manager-service, browser-native-messaging]
+    autostart: org.keepassxc.KeePassXC.desktop
+  cli:
+    command: usr/bin/keepassxc-cli
+    extensions: [kde-neon]
+    plugs: [home, removable-media, raw-usb]
+  proxy:
+    command: usr/bin/keepassxc-proxy
+    extensions: [kde-neon]
+
+plugs:
+  browser-native-messaging:
+    interface: personal-files
+    write:
+      - $HOME/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json
+      - $HOME/.config/chromium/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json
+      - $HOME/.config/google-chrome/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json
+      - $HOME/.config/microsoft-edge/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json
+      - $HOME/.config/vivaldi/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json
+      - $HOME/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts/org.keepassxc.keepassxc_browser.json
+      - $HOME/.local/share/torbrowser/tbb/x86_64/tor-browser_en-US/Browser/TorBrowser/Data/Browser/.mozilla/native-messaging-hosts/org.keepassxc.keepassxc_browser.json
+
+slots:
+  session-dbus-interface:
+    interface: dbus
+    name: org.keepassxc.KeePassXC.MainWindow
+    bus: session
+
+parts:
+  keepassxc:
+    source: .
+    plugin: cmake
+    parse-info: [usr/share/metainfo/org.keepassxc.KeePassXC.appdata.xml]
+    cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DKEEPASSXC_DIST_TYPE=Snap
+      - -DKEEPASSXC_BUILD_TYPE=Release
+      - -DWITH_TESTS=OFF
+      - -DWITH_XC_ALL=ON
+      - -DWITH_XC_UPDATECHECK=OFF
+    build-packages:
+      - g++
+      - libbotan-2-dev
+      - libargon2-dev
+      - zlib1g-dev
+      - libqrencode-dev
+      - libusb-1.0-0-dev
+      - libreadline-dev
+      - libpcsclite-dev
+      - libminizip-dev
+      - libxi-dev
+      - libxtst-dev
+      - asciidoctor
+      - libfreetype-dev
+    stage-packages:
+      - dbus
+      - libbotan-2-19
+      - libqrencode4
+      - libusb-1.0-0
+      - libreadline8
+      - libpcsclite1
+      - libminizip1
+      - libxtst6
+      - libfreetype6
+      - xclip
+lint:
+  ignore:
+    - library:
+      - lib/**/libhistory.so*
+

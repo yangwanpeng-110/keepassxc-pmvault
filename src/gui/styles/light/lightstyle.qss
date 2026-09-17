@@ -1,0 +1,25 @@
+DatabaseWidget:!active,
+DatabaseWidget #groupView:!active, DatabaseWidget #tagView:!active,
+EntryPreviewWidget *:!active[blendIn="true"] {
+    background-color: #FCFCFC;
+}
+
+DatabaseWidget:disabled,
+DatabaseWidget #groupView:disabled, DatabaseWidget #tagView:disabled,
+EntryPreviewWidget *:disabled[blendIn="true"] {
+    background-color: #EDEDED;
+}
+
+QPushButton:default:hover, QPushButton:checked:hover {
+    /* Using slightly lighter shade from palette(highlight) */
+    background: #568821;
+}
+
+QToolTip {
+    color: #F9F9F9;
+    background-color: #4D7F1A;
+}
+
+QGroupBox::title {
+    color: #4B7B19;
+}

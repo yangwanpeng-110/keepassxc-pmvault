@@ -1,0 +1,44 @@
+name: PmVault Linux build gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++ cmake ninja-build pkg-config \
+            qtbase5-dev qttools5-dev qttools5-dev-tools libqt5svg5-dev \
+            libbotan-2-dev libargon2-dev libminizip-dev libqrencode-dev zlib1g-dev
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DKEEPASSXC_BUILD_TYPE=Release \
+            -DWITH_TESTS=OFF \
+            -DWITH_GUI_TESTS=OFF \
+            -DWITH_XC_DOCS=OFF \
+            -DWITH_XC_BROWSER=ON \
+            -DWITH_XC_NETWORKING=OFF \
+            -DWITH_XC_SSHAGENT=OFF \
+            -DWITH_XC_KEESHARE=OFF \
+            -DWITH_XC_YUBIKEY=OFF \
+            -DWITH_XC_UPDATECHECK=OFF \
+            -DWITH_XC_FDOSECRETS=OFF \
+            -DWITH_XC_X11=OFF
+
+      - name: Build
+        run: cmake --build build -j 2
+
+      - name: Smoke test
+        run: ./build/src/cli/keepassxc-cli --version

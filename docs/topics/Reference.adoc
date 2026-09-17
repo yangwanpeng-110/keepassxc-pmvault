@@ -1,0 +1,148 @@
+= KeePassXC – Reference
+include::.sharedheader[]
+:imagesdir: ../images
+
+// tag::content[]
+== Reference
+This section contains full details on advanced features available in KeePassXC.
+
+=== Entry Placeholders
+[grid=rows, frame=none, width=90%]
+|===
+|Placeholder |Description
+
+|{TITLE}         |Entry Title
+|{USERNAME}      |Username
+|{PASSWORD}      |Password
+|{URL}           |URL
+|{NOTES}         |Notes
+|{TOTP}          |Current TOTP value (if configured)
+|{S:&lt;ATTRIBUTE_NAME&gt;}   |Value for the given attribute (case sensitive)
+|{T-CONV:/&lt;PLACEHOLDER&gt;/&lt;METHOD&gt;/} |Text conversion for resolved placeholder (eg, {USERNAME}) using the following methods: UPPER, LOWER, BASE64, HEX, URI, URI-DEC
+|{T-REPLACE-RX:/&lt;PLACEHOLDER&gt;/&lt;REGEX&gt;/&lt;REPLACE&gt;/} |Use a regular expression to find and replace data from a resolved placeholder (eg, {USERNAME}). Refer to match groups using $1, $2, etc.
+|{URL:RMVSCM}	        |URL without scheme (e.g., https)
+|{URL:WITHOUTSCHEME}	|URL without scheme
+|{URL:SCM}	     |URL Scheme
+|{URL:SCHEME}	 |URL Scheme
+|{URL:HOST}	     |URL Host (e.g., example.com)
+|{URL:PORT}	     |URL Port
+|{URL:PATH}	     |URL Path (e.g., /path/to/page.html)
+|{URL:QUERY}	 |URL Query String
+|{URL:FRAGMENT}	 |URL Fragment
+|{URL:USERINFO}	 |URL Username:Password
+|{URL:USERNAME}	 |URL Username
+|{URL:PASSWORD}	 |URL Password
+|{DT_SIMPLE}	 |Current Date-Time (yyyyMMddhhmmss)
+|{DT_YEAR}	     |Current Year (yyyy)
+|{DT_MONTH}	     |Current Month (MM)
+|{DT_DAY}	     |Current Day (dd)
+|{DT_HOUR}	     |Current Hour (hh)
+|{DT_MINUTE}	 |Current Minutes (mm)
+|{DT_SECOND}	 |Current Seconds (ss)
+|{DT_UTC_SIMPLE} |Current UTC Date-Time (yyyyMMddhhmmss)
+|{DT_UTC_YEAR}	 |Current UTC Year (yyyy)
+|{DT_UTC_MONTH}	 |Current UTC Month (MM)
+|{DT_UTC_DAY}	 |Current UTC Day (dd)
+|{DT_UTC_HOUR}	 |Current UTC Hour (hh)
+|{DT_UTC_MINUTE} |Current UTC Minutes (mm)
+|{DT_UTC_SECOND} |Current UTC Seconds (ss)
+|{DB_DIR}	     |Absolute directory path of database file
+|===
+
+NOTE: You can insert literal placeholder strings by escaping the beginning and ending curly braces. For example, to insert the string `{USERNAME}`, you would type `++\{USERNAME\}++`.
+
+=== Entry Cross-Reference
+A reference to another entry's field is possible using the shorthand syntax:
+`{REF:&lt;FIELD&gt;@&lt;SEARCH_IN&gt;:&lt;SEARCH_TEXT&gt;}`
+
+`&lt;FIELD&gt;` and `&lt;SEARCH_IN&gt;` can be one of following:
+
+* T – Title
+* U – Username
+* P – Password
+* A – URL
+* N – Notes
+* I – UUID (found on entry properties page)
+* O – Custom Attribute _(SEARCH_IN only)_
+
+Examples: +
+`{REF:U@I:033054D445C648C59092CC1D661B1B71}` +
+`{REF:P@T:Other Entry}` +
+`{REF:A@O:Attribute 1}`
+
+=== Auto-Type Actions
+[grid=rows, frame=none, width=90%]
+|===
+|Action Code |Description
+
+|{TAB}, {ENTER}, {SPACE}, {INSERT}, {DELETE}, {HOME}, {END}, {PGUP}, {PGDN}, {BACKSPACE}, {CAPSLOCK}, {ESC}
+|Press the corresponding keyboard key
+
+|{UP}, {DOWN}, {LEFT}, {RIGHT}  |Press the corresponding arrow key
+|{F1}, {F2}, ..., {F16}         |Press kbd:[F1], kbd:[F2], etc.
+|{LEFTBRACE}, {RIGHTBRACE}      |Press kbd:[{] or kbd:[}], respectively
+|{&lt;KEY&gt; X}  |Repeat &lt;KEY&gt; X times (e.g., {SPACE 5} inserts five spaces)
+|{DELAY=X}     |Set delay between key presses to X milliseconds
+|{DELAY X}     |Pause typing for X milliseconds
+|{CLEARFIELD}  |Clear the input field
+|{PICKCHARS}   |Pick specific password characters from a dialog
+|===
+
+[grid=rows, frame=none, width=90%]
+|===
+|Modifier |Description
+
+|+        |kbd:[Shift]
+|^        |kbd:[Ctrl]
+|%        |kbd:[Alt]
+|#        |kbd:[Win]/kbd:[Cmd]
+|===
+*Text Conversions:*
+
+`{T-CONV:/&lt;PLACEHOLDER&gt;/&lt;METHOD&gt;/}` +
+Convert resolved placeholder (e.g., {USERNAME}, {PASSWORD}, etc.) using the following methods: UPPER, LOWER, BASE64, HEX, URI, URI-DEC.
+
+`{T-REPLACE-RX:/&lt;PLACEHOLDER&gt;/&lt;SEARCH&gt;/&lt;REPLACE&gt;/}` +
+Use regular expressions to find and replace data from a resolved placeholder. Refer to match groups using $1, $2, etc.
+
+=== Backup Path Placeholders
+[grid=rows, frame=none, width=90%]
+|===
+|Database Backup Path Placeholder |Description
+
+|{DB_FILENAME}  |The database's filename without extension
+|{TIME}        |The current time formatted as dd_MM_yyyy_hh-mm-ss.
+|{TIME:<format>}        |The current time formatted according to the format string specified by <format>. See https://doc.qt.io/qt-5/qtime.html#toString for a list of available placeholders.
+|===
+
+[grid=rows, frame=none, width=90%]
+|===
+|Backup path example |Location of backup(s)
+
+|`{DB_FILENAME}-{TIME}.bak.kdbx` |`C:\Users\MyUsername\MyDatabase-02_01_2022_03-04-05.bak.kdbx` +
+`C:\Users\MyUsername\MyDatabase-05_01_2022_12-10-00.bak.kdbx`
+|`backups\\{DB_FILENAME}.bak.kdbx` |`C:\Users\MyUsername\backups\MyDatabase.bak.kdbx`
+|`C:\Backups\{TIME:dd.MM.yyyy}\\{DB_FILENAME}.kdbx` |`C:\Backups\02.01.2022\MyDatabase.kdbx` +
+`C:\Backups\05.01.2022\MyDatabase.kdbx`
+|`C:\Backups\\{DB_FILENAME}\{TIME:MM-dd-yyyy}.kdbx` |`C:\Backups\MyDatabase\01-02-2022.kdbx` +
+`C:\Backups\MyDatabase\01-05-2022.kdbx`
+|===
+
+=== Creating a YubiKey backup
+It is advisable to have a backup replica YubiKey In case your main YubiKey gets damaged, lost, or stolen. The same HMAC key will need to be written to both keys. To do this you can either use the YubiKey Personalization Tool GUI or the ykpersonalize CLI tool. The steps for the CLI tool are shown:
+
+1. Create a 20 byte HMAC key:
++
+```
+dd status=none if=/dev/random bs=20 count=1 | xxd -p -c 40
+```
+
+2. Write the HMAC key to slot 2 _(Set through the first switch. Out of the box the YubiKey OTP resides in slot 1)_:
++
+```
+ykpersonalize -2 -a -ochal-resp -ochal-hmac -ohmac-lt64 -oserial-api-visible -oallow-update
+```
+
+You will be asked to enter the HMAC key you created earlier, copy/paste they key output in the first step. Repeat step 2 for your second YubiKey using the same HMAC key from before. We recommend storing your HMAC key in a safe place (e.g., printed on paper) in case you need to recreate another key.
+
+// end::content[]

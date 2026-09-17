@@ -1,0 +1,24 @@
+DatabaseOpenWidget #centralStack, DatabaseOpenWidget #publicSummaryLabel {
+    border: 2px groove palette(mid);
+    background: palette(light);
+}
+
+QToolTip {
+    padding: 3px;
+}
+
+DatabaseWidget #SearchBanner, DatabaseWidget #KeeShareBanner {
+    font-weight: bold;
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
+    border: 1px solid palette(dark);
+    padding: 2px;
+}
+
+QLineEdit {
+    padding-left: 2px;
+}
+
+*[title="true"] {
+    font-weight: bold;
+}

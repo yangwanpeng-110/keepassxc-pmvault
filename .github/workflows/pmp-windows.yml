@@ -1,0 +1,79 @@
+name: PmVault Windows (exe)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    paths:
+      - 'src/pmp/**'
+      - 'src/**'
+      - 'scripts/pmp_windows_package.sh'
+      - '.github/workflows/pmp-windows.yml'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSYS2 (MINGW64)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            git
+            make
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-svg
+            mingw-w64-x86_64-qt5-tools
+            mingw-w64-x86_64-qt5-imageformats
+            mingw-w64-x86_64-libbotan
+            mingw-w64-x86_64-argon2
+            mingw-w64-x86_64-minizip
+            mingw-w64-x86_64-qrencode
+            mingw-w64-x86_64-zlib
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G "MSYS Makefiles" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DKEEPASSXC_BUILD_TYPE=Release \
+            -DWITH_TESTS=OFF \
+            -DWITH_GUI_TESTS=OFF \
+            -DWITH_XC_DOCS=OFF \
+            -DWITH_XC_BROWSER=ON \
+            -DWITH_XC_NETWORKING=OFF \
+            -DWITH_XC_SSHAGENT=OFF \
+            -DWITH_XC_KEESHARE=OFF \
+            -DWITH_XC_YUBIKEY=OFF \
+            -DWITH_XC_UPDATECHECK=OFF
+
+      - name: Build
+        run: cmake --build build -j 2
+
+      - name: Smoke test (CLI version)
+        run: ./build/src/cli/keepassxc-cli.exe --version
+
+      - name: Assemble portable package
+        run: bash scripts/pmp_windows_package.sh
+
+      - name: Zip portable package
+        shell: powershell
+        run: |
+          Compress-Archive -Path "build/pmp-pkg/*" -DestinationPath "PmVault-windows-x64.zip" -Force
+          Get-FileHash "PmVault-windows-x64.zip" -Algorithm SHA256 | Format-List
+
+      - name: Upload portable zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: PmVault-windows-x64
+          path: PmVault-windows-x64.zip
+          if-no-files-found: error

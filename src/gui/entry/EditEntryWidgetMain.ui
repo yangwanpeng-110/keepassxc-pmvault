@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EditEntryWidgetMain</class>
+ <widget class="QScrollArea" name="EditEntryWidgetMain">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>523</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Edit Entry</string>
+  </property>
+  <property name="frameShape">
+   <enum>QFrame::NoFrame</enum>
+  </property>
+  <property name="frameShadow">
+   <enum>QFrame::Plain</enum>
+  </property>
+  <property name="horizontalScrollBarPolicy">
+   <enum>Qt::ScrollBarAlwaysOff</enum>
+  </property>
+  <property name="sizeAdjustPolicy">
+   <enum>QAbstractScrollArea::AdjustToContents</enum>
+  </property>
+  <property name="widgetResizable">
+   <bool>true</bool>
+  </property>
+  <widget class="QWidget" name="container">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>400</width>
+     <height>523</height>
+    </rect>
+   </property>
+   <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <property name="horizontalSpacing">
+     <number>10</number>
+    </property>
+    <property name="verticalSpacing">
+     <number>8</number>
+    </property>
+    <item row="0" column="1">
+     <widget class="QLineEdit" name="titleEdit">
+      <property name="accessibleName">
+       <string>Title field</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0">
+     <widget class="QLabel" name="usernameLabel">
+      <property name="text">
+       <string>&amp;Username:</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+      <property name="buddy">
+       <cstring>usernameComboBox</cstring>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1">
+     <widget class="PasswordWidget" name="passwordEdit" native="true">
+      <property name="focusPolicy">
+       <enum>Qt::StrongFocus</enum>
+      </property>
+      <property name="accessibleName">
+       <string>Password field</string>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="1">
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="QPlainTextEdit" name="notesEdit">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>100</height>
+         </size>
+        </property>
+        <property name="accessibleName">
+         <string>Notes field</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="0" column="0">
+     <widget class="QLabel" name="titleLabel">
+      <property name="text">
+       <string>&amp;Title:</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+      <property name="buddy">
+       <cstring>titleEdit</cstring>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0">
+     <widget class="QLabel" name="passwordLabel">
+      <property name="text">
+       <string>&amp;Password:</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+      <property name="buddy">
+       <cstring>passwordEdit</cstring>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="1">
+     <widget class="QComboBox" name="usernameComboBox">
+      <property name="focusPolicy">
+       <enum>Qt::StrongFocus</enum>
+      </property>
+      <property name="accessibleName">
+       <string>Username field</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="1">
+     <widget class="TagsEdit" name="tagsList" native="true">
+      <property name="focusPolicy">
+       <enum>Qt::StrongFocus</enum>
+      </property>
+      <property name="accessibleName">
+       <string>Tags list</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="1">
+     <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1,0">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <item>
+       <widget class="QCheckBox" name="expireCheck">
+        <property name="toolTip">
+         <string>Toggle expiration</string>
+        </property>
+        <property name="accessibleName">
+         <string>Toggle expiration</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDateTimeEdit" name="expireDatePicker">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="accessibleName">
+         <string>Expiration field</string>
+        </property>
+        <property name="calendarPopup">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="expirePresets">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="toolTip">
+         <string>Expiration Presets</string>
+        </property>
+        <property name="accessibleName">
+         <string>Expiration presets</string>
+        </property>
+        <property name="text">
+         <string>Presets</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="3" column="0">
+     <widget class="QLabel" name="urlLabel">
+      <property name="text">
+       <string>UR&amp;L:</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+      <property name="buddy">
+       <cstring>urlEdit</cstring>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <layout class="QHBoxLayout" name="horizontalLayout_6">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <item>
+       <widget class="URLEdit" name="urlEdit">
+        <property name="accessibleName">
+         <string>Url field</string>
+        </property>
+        <property name="placeholderText">
+         <string notr="true">https://example.com</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="fetchFaviconButton">
+        <property name="toolTip">
+         <string>Download favicon for URL</string>
+        </property>
+        <property name="accessibleName">
+         <string>Download favicon for URL</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="8" column="0">
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QLabel" name="notesLabel">
+        <property name="text">
+         <string>&amp;Notes:</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="buddy">
+         <cstring>notesEdit</cstring>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <property name="topMargin">
+         <number>6</number>
+        </property>
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>5</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QToolButton" name="revealNotesButton">
+          <property name="toolTip">
+           <string>Toggle notes visibility</string>
+          </property>
+          <property name="accessibleName">
+           <string>Toggle notes visibility</string>
+          </property>
+          <property name="iconSize">
+           <size>
+            <width>14</width>
+            <height>14</height>
+           </size>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+    <item row="5" column="0">
+     <widget class="QLabel" name="tagsLabel">
+      <property name="text">
+       <string>T&amp;ags:</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+      <property name="buddy">
+       <cstring>tagsList</cstring>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="0">
+     <widget class="QLabel" name="expireLabel">
+      <property name="text">
+       <string>&amp;Expires:</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+      <property name="buddy">
+       <cstring>expireCheck</cstring>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>TagsEdit</class>
+   <extends>QWidget</extends>
+   <header>gui/tag/TagsEdit.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>URLEdit</class>
+   <extends>QLineEdit</extends>
+   <header>gui/URLEdit.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>PasswordWidget</class>
+   <extends>QWidget</extends>
+   <header>gui/PasswordWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>titleEdit</tabstop>
+  <tabstop>usernameComboBox</tabstop>
+  <tabstop>passwordEdit</tabstop>
+  <tabstop>urlEdit</tabstop>
+  <tabstop>fetchFaviconButton</tabstop>
+  <tabstop>tagsList</tabstop>
+  <tabstop>expireCheck</tabstop>
+  <tabstop>expireDatePicker</tabstop>
+  <tabstop>expirePresets</tabstop>
+  <tabstop>revealNotesButton</tabstop>
+  <tabstop>notesEdit</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,77 @@
+QPushButton:default {
+    background: palette(highlight);
+    color: palette(highlighted-text);
+}
+
+/* Note: default button hover is defined in the respective theme style */
+QPushButton:!default:hover {
+    background: palette(mid);
+}
+
+QPushButton:checked {
+    background: palette(highlight);
+    color: palette(highlighted-text);
+}
+
+QSpinBox {
+    min-width: 90px;
+}
+
+QCheckBox, QRadioButton {
+    spacing: 10px;
+}
+
+ReportsDialog QTableView::item,
+EntryAttachmentsWidget QTableView::item
+{
+    padding: 4px;
+}
+
+DatabaseWidget, DatabaseWidget #groupView, DatabaseWidget #tagView {
+    background-color: palette(window);
+    border: none;
+}
+
+EntryPreviewWidget *[blendIn="true"]
+{
+    background-color: palette(window);
+    border: none;
+    padding-left: 0px;
+}
+
+DatabaseOpenWidget #centralStack, DatabaseOpenWidget #publicSummaryLabel {
+    border: 1px solid palette(mid);
+    background: palette(light);
+}
+
+QGroupBox {
+    font-weight: bold;
+}
+
+QGroupBox::title {
+    margin-top: -.4em;
+    margin-left: -.4em;
+    subcontrol-origin: padding;
+}
+
+QToolTip {
+    border: none;
+    padding: 3px;
+}
+
+DatabaseWidget #SearchBanner, DatabaseWidget #KeeShareBanner {
+    font-weight: bold;
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
+    border: 1px solid palette(dark);
+    padding: 2px;
+}
+
+QPlainTextEdit, QTextEdit {
+    background-color: palette(base);
+    padding-left: 4px;
+}
+
+*[title="true"] {
+    font-weight: bold;
+}

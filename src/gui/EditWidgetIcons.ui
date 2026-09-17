@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EditWidgetIcons</class>
+ <widget class="QWidget" name="EditWidgetIcons">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>437</width>
+    <height>316</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QRadioButton" name="defaultIconsRadio">
+     <property name="text">
+      <string>Use default icon</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QListView" name="defaultIconsView">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="movement">
+      <enum>QListView::Static</enum>
+     </property>
+     <property name="flow">
+      <enum>QListView::LeftToRight</enum>
+     </property>
+     <property name="isWrapping" stdset="0">
+      <bool>true</bool>
+     </property>
+     <property name="resizeMode">
+      <enum>QListView::Adjust</enum>
+     </property>
+     <property name="spacing">
+      <number>4</number>
+     </property>
+     <property name="viewMode">
+      <enum>QListView::ListMode</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Fixed</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>10</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="QRadioButton" name="customIconsRadio">
+     <property name="text">
+      <string>Use custom icon</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QListView" name="customIconsView">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="movement">
+      <enum>QListView::Static</enum>
+     </property>
+     <property name="flow">
+      <enum>QListView::LeftToRight</enum>
+     </property>
+     <property name="isWrapping" stdset="0">
+      <bool>true</bool>
+     </property>
+     <property name="resizeMode">
+      <enum>QListView::Adjust</enum>
+     </property>
+     <property name="spacing">
+      <number>4</number>
+     </property>
+     <property name="viewMode">
+      <enum>QListView::ListMode</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="customIconButtonsHorizontalLayout" stretch="0,0,0,0">
+     <item>
+      <widget class="QPushButton" name="addButton">
+       <property name="text">
+        <string>Choose icon…</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="faviconURL">
+       <property name="minimumSize">
+        <size>
+         <width>200</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Set the URL to use to search for a favicon</string>
+       </property>
+       <property name="placeholderText">
+        <string>Favicon URL</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="faviconButton">
+       <property name="toolTip">
+        <string>Download favicon for URL</string>
+       </property>
+       <property name="accessibleName">
+        <string>Download favicon for URL</string>
+       </property>
+       <property name="text">
+        <string>Download favicon</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="applyToChildrenHorizontalLayout" stretch="0,0">
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="applyIconToPushButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string>Apply selected icon to subgroups and entries</string>
+       </property>
+       <property name="accessibleName">
+        <string>Apply selected icon to subgroups and entries</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">padding: 4px 10px</string>
+       </property>
+       <property name="text">
+        <string>Apply icon to…</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>defaultIconsRadio</tabstop>
+  <tabstop>defaultIconsView</tabstop>
+  <tabstop>customIconsRadio</tabstop>
+  <tabstop>customIconsView</tabstop>
+  <tabstop>addButton</tabstop>
+  <tabstop>faviconURL</tabstop>
+  <tabstop>faviconButton</tabstop>
+  <tabstop>applyIconToPushButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>
