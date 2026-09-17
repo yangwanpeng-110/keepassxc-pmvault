@@ -47,6 +47,23 @@ jobs:
             mingw-w64-x86_64-qrencode
             mingw-w64-x86_64-zlib
 
+      - name: Provide unversioned windeployqt name
+        run: |
+          # MSYS2 ships the Qt5 deployment tool as windeployqt-qt5.exe (suffix
+          # added so Qt5 and Qt6 can coexist). KeePassXC's CMake and the
+          # packaging script look for the unversioned "windeployqt", so expose
+          # an alias under MINGW64/bin.
+          if [ ! -e /mingw64/bin/windeployqt.exe ]; then
+            src="$(ls /mingw64/bin/windeployqt-qt5.exe 2>/dev/null | head -n1)"
+            if [ -z "$src" ]; then
+              src="$(ls /mingw64/bin/windeployqt*.exe 2>/dev/null | grep -vi qt6 | head -n1)"
+            fi
+            echo "Aliasing $src -> windeployqt.exe"
+            cp -f "$src" /mingw64/bin/windeployqt.exe
+          fi
+          ls -l /mingw64/bin/windeployqt*.exe
+          /mingw64/bin/windeployqt.exe --version || true
+
       - name: Configure
         run: |
           cmake -S . -B build -G "MSYS Makefiles" \
