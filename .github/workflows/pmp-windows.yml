@@ -3,8 +3,14 @@ name: PmVault Windows (exe)
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     tags:
       - 'v*'
+    paths:
+      - 'src/pmp/**'
+      - 'src/**'
+      - 'scripts/pmp_windows_package.sh'
+      - '.github/workflows/pmp-windows.yml'
   pull_request:
     paths:
       - 'src/pmp/**'
