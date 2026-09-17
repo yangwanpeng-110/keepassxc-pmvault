@@ -407,7 +407,9 @@ if(UNIX AND NOT APPLE)
     include_directories(${Qt5Gui_PRIVATE_INCLUDE_DIRS})
 endif()
 if(WIN32)
-    target_link_libraries(keepassx_core Wtsapi32.lib Ws2_32.lib)
+    # crypt32 provides DPAPI (CryptProtectData/CryptUnprotectData) used by the PMP
+    # extension to seal the per-device key; Ws2_32 is needed for PMP LAN sync.
+    target_link_libraries(keepassx_core Wtsapi32.lib Ws2_32.lib crypt32)
     if (WINSDK)
         target_link_libraries(keepassx_core WindowsApp.lib)
     endif()

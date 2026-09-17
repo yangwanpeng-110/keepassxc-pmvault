@@ -26,12 +26,25 @@
 #include <botan/hash.h>
 #include <botan/kdf.h>
 #include <botan/mac.h>
+#include <botan/version.h>
 
 #include <QByteArray>
 #include <QString>
 
 namespace PmpCrypto
 {
+// Botan 2 exposes Botan::ENCRYPTION/DECRYPTION in the Botan namespace; Botan 3
+// scopes them as Botan::Cipher_Dir::Encryption/Decryption (the old uppercase
+// spellings are only deprecated aliases). Resolve once here so callers stay
+// version agnostic and build against both Botan 2 (Linux) and Botan 3 (MSYS2).
+#if defined(BOTAN_VERSION_MAJOR) && BOTAN_VERSION_MAJOR >= 3
+    inline constexpr Botan::Cipher_Dir kSealDirection = Botan::Cipher_Dir::Encryption;
+    inline constexpr Botan::Cipher_Dir kOpenDirection = Botan::Cipher_Dir::Decryption;
+#else
+    inline constexpr Botan::Cipher_Dir kSealDirection = Botan::ENCRYPTION;
+    inline constexpr Botan::Cipher_Dir kOpenDirection = Botan::DECRYPTION;
+#endif
+
     inline Botan::RandomNumberGenerator& rng()
     {
         static Botan::AutoSeeded_RNG instance;
@@ -86,7 +99,7 @@ namespace PmpCrypto
     // AES-256-GCM. Layout: nonce(12 bytes) || ciphertext || tag(16 bytes).
     inline QByteArray aesGcmSeal(const QByteArray& key32, const QByteArray& plain, const QByteArray& aad)
     {
-        auto enc = Botan::AEAD_Mode::create("AES-256/GCM", Botan::ENCRYPTION);
+        auto enc = Botan::AEAD_Mode::create("AES-256/GCM", kSealDirection);
         enc->set_key(toSv(key32));
         QByteArray nonce = randomBytes(12);
         enc->set_associated_data(reinterpret_cast<const Botan::uint8_t*>(aad.constData()),
@@ -106,7 +119,7 @@ namespace PmpCrypto
         QByteArray nonce = sealed.left(12);
         auto buf = toSv(sealed.mid(12));
         try {
-            auto dec = Botan::AEAD_Mode::create("AES-256/GCM", Botan::DECRYPTION);
+            auto dec = Botan::AEAD_Mode::create("AES-256/GCM", kOpenDirection);
             dec->set_key(toSv(key32));
             dec->set_associated_data(reinterpret_cast<const Botan::uint8_t*>(aad.constData()),
                                      static_cast<size_t>(aad.size()));
