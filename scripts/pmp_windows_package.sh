@@ -17,12 +17,23 @@ cp "${BUILD_DIR}/src/keepassxc.exe"        "${PKG_DIR}/"
 cp "${BUILD_DIR}/src/cli/keepassxc-cli.exe" "${PKG_DIR}/"
 cp "${BUILD_DIR}/src/proxy/keepassxc-proxy.exe" "${PKG_DIR}/"
 
-# Qt deployment (plugins, platforms, TLS backend, compiler runtime).
-# --tls makes windeployqt ship the TLS backend plugins (qopensslbackend, ...)
-# needed by the mutual-TLS-1.3 LAN sync.
+# Qt deployment (plugins, platforms, compiler runtime). We do not rely on
+# windeployqt's --tls flag: it is absent from older Qt5 windeployqt builds and
+# would abort the whole deployment. The TLS backend plugins are copied by hand
+# further down so the result is identical across Qt5/Qt6 and patch releases.
 windeployqt --release --compiler-runtime --no-quick-import \
-    --no-system-d3d-compiler --no-opengl-sw --tls \
+    --no-system-d3d-compiler --no-opengl-sw \
     "${PKG_DIR}/keepassxc.exe"
+
+# Ship the Qt TLS backend plugins (qopensslbackend / qschannelbackend) that back
+# QSslSocket for the mutual-TLS-1.3 LAN sync. The tls/ sub-directory sits next
+# to the executable, matching windeployqt's own plugin layout.
+for plugroot in /mingw64/share/qt5/plugins /mingw64/lib/qt5/plugins /mingw64/plugins; do
+    if [ -d "${plugroot}/tls" ]; then
+        mkdir -p "${PKG_DIR}/tls"
+        cp -f "${plugroot}/tls/"*.dll "${PKG_DIR}/tls/" 2>/dev/null || true
+    fi
+done
 
 # Pull every remaining MINGW64 runtime dependency (botan, argon2, minizip,
 # qrencode, zlib, OpenSSL for TLS 1.3, libgcc/libstdc++/winpthread, ...).
@@ -35,8 +46,9 @@ for _ in 1 2 3 4 5 6 7 8; do
             cp "$dll" "${PKG_DIR}/"
             added=1
         fi
-    done < <(ldd "${PKG_DIR}"/*.exe "${PKG_DIR}"/*.dll 2>/dev/null \
-              | grep -oE '/(mingw64|ucrt64)/bin/[A-Za-z0-9._+-]+\.dll' | sort -u)
+    done < <(find "${PKG_DIR}" -type f \( -name '*.exe' -o -name '*.dll' \) -print0 \
+              | xargs -0 ldd 2>/dev/null \
+              | grep -oE '/(mingw64|ucrt64|clang64)/bin/[A-Za-z0-9._+-]+\.dll' | sort -u)
     [ "$added" -eq 0 ] && break
 done
 

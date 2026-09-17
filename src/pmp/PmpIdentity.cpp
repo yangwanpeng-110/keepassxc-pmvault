@@ -37,7 +37,17 @@ namespace
         Botan::ECDSA_PrivateKey key(rng, Botan::EC_Group("secp256r1"));
 
         Botan::X509_Cert_Options opts("PmVault");
+#if defined(BOTAN_VERSION_MAJOR) && BOTAN_VERSION_MAJOR >= 3
+        // Botan 3 turns Key_Constraints into a class whose Bits enum is nested;
+        // combine the bits through the uint32_t constructor. Botan 2 instead
+        // exposes the shouting-case constants in the Botan namespace.
+        const Botan::Key_Constraints constraints(
+            static_cast<uint32_t>(Botan::Key_Constraints::DigitalSignature) |
+            static_cast<uint32_t>(Botan::Key_Constraints::KeyAgreement));
+        opts.add_constraints(constraints);
+#else
         opts.add_constraints(Botan::Key_Constraints(Botan::DIGITAL_SIGNATURE | Botan::KEY_AGREEMENT));
+#endif
         Botan::X509_Certificate cert = Botan::X509::create_self_signed_cert(opts, key, "SHA-256", rng);
 
         const std::string certDer = Botan::PEM_Code::encode(cert.BER_encode(), "CERTIFICATE");
