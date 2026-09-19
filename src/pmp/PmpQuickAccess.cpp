@@ -296,7 +296,11 @@ void PmpQuickAccess::showSettings()
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
     QObject::connect(buttons, &QDialogButtonBox::accepted, &dlg, [&]() {
         m_enabled = enable->isChecked();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
         m_sequence = editor->key();
+#else
+        m_sequence = editor->keySequence();
+#endif
         QSettings settings(QStringLiteral("PmVault"), QStringLiteral("PmVault"));
         settings.setValue(QStringLiteral("quickaccess/enabled"), m_enabled);
         settings.setValue(QStringLiteral("quickaccess/hotkey"), m_sequence.toString());
