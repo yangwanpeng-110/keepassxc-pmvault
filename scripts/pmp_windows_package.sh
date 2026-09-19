@@ -101,6 +101,65 @@ deploy_plugins iconengines  # qsvgicon
 deploy_plugins styles       # qwindowsvistastyle
 
 # ---------------------------------------------------------------------------
+# 4b) TLS backend plugins - the fixed plugin roots above can miss the tls/
+#     subdirectory on some Qt layouts, so locate the backends across the whole
+#     MSYS2 installation as a fallback. These back QSslSocket's TLS 1.3.
+# ---------------------------------------------------------------------------
+mkdir -p "${PKG_DIR}/tls"
+for backend in qopensslbackend qschannelbackend qcertonlybackend; do
+    if [ ! -f "${PKG_DIR}/tls/${backend}.dll" ]; then
+        found="$(find /mingw64 /ucrt64 /clang64 -type f -path '*tls*' -name "${backend}.dll" 2>/dev/null \
+                     | head -n 1 || true)"
+        if [ -n "${found}" ] && [ -f "${found}" ]; then
+            cp -f "${found}" "${PKG_DIR}/tls/"
+            log "tls backend: ${backend} <- ${found}"
+        else
+            log "NOTE: ${backend}.dll not found (this Qt build may link the backend statically)"
+        fi
+    fi
+done
+
+# ---------------------------------------------------------------------------
+# 4c) Application data under share/ (on Windows Resources resolves the data
+#     path to <appdir>/share). Ship the Simplified-Chinese UI translation and
+#     the diceware/password-generator word lists so the portable app is fully
+#     localized and feature-complete on a clean machine.
+# ---------------------------------------------------------------------------
+mkdir -p "${PKG_DIR}/share/translations"
+copied_qm=0
+if [ -f "${BUILD_DIR}/share/translations/keepassxc_zh_CN.qm" ]; then
+    cp -f "${BUILD_DIR}/share/translations/keepassxc_zh_CN.qm" "${PKG_DIR}/share/translations/"
+    log "translation: keepassxc_zh_CN.qm"
+    copied_qm=1
+else
+    log "WARNING: keepassxc_zh_CN.qm was not produced by the build; UI stays English"
+fi
+for qtroot in /mingw64/share/qt5/translations /mingw64/lib/qt5/translations \
+              /mingw64/translations /ucrt64/share/qt5/translations /clang64/share/qt5/translations; do
+    if [ -f "${qtroot}/qtbase_zh_CN.qm" ]; then
+        cp -f "${qtroot}/qtbase_zh_CN.qm" "${PKG_DIR}/share/translations/"
+        log "translation: qtbase_zh_CN.qm <- ${qtroot}"
+        break
+    fi
+done
+[ "${copied_qm}" -eq 1 ] || log "WARNING: application Chinese translation is missing"
+
+if [ -d "${BUILD_DIR}/share/wordlists" ]; then
+    mkdir -p "${PKG_DIR}/share/wordlists"
+    cnt=0
+    for wl in "${BUILD_DIR}/share/wordlists/"*.wordlist; do
+        [ -f "$wl" ] && { cp -f "$wl" "${PKG_DIR}/share/wordlists/"; cnt=$((cnt + 1)); }
+    done
+    log "wordlists: ${cnt} file(s)"
+fi
+
+# qt.conf carries Windows platform tweaks (e.g. Qt dark-mode support).
+if [ -f "share/windows/qt.conf" ]; then
+    cp -f "share/windows/qt.conf" "${PKG_DIR}/qt.conf"
+    log "qt.conf copied"
+fi
+
+# ---------------------------------------------------------------------------
 # 5) Recursive ldd sweep: pull every MINGW runtime DLL the exe AND all deployed
 #    plugins depend on (botan, argon2, minizip, qrencode, zlib, Qt5*, MinGW
 #    runtime, ...). Repeated until no new DLL appears, so transitive deps of the
@@ -167,9 +226,9 @@ for must in keepassxc.exe keepassxc-cli.exe platforms/qwindows.dll; do
     fi
 done
 
-for soft in Qt5Core.dll Qt5Network.dll Qt5Widgets.dll; do
+for soft in Qt5Core.dll Qt5Network.dll Qt5Widgets.dll share/translations/keepassxc_zh_CN.qm; do
     if ! ls "${PKG_DIR}/${soft}" >/dev/null 2>&1; then
-        log "WARNING: expected runtime library ${soft} is absent"
+        log "WARNING: expected file ${soft} is absent"
     fi
 done
 
