@@ -73,6 +73,8 @@
         <file>application/scalable/actions/password-generator.svg</file>
         <file>application/scalable/actions/password-show-off.svg</file>
         <file>application/scalable/actions/password-show-on.svg</file>
+        <file>application/scalable/actions/pmp-origin-desktop.svg</file>
+        <file>application/scalable/actions/pmp-origin-mobile.svg</file>
         <file>application/scalable/actions/proton.svg</file>
         <file>application/scalable/actions/qrcode.svg</file>
         <file>application/scalable/actions/refresh.svg</file>

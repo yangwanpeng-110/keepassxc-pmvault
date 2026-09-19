@@ -107,6 +107,10 @@ namespace PmpSync
         QString uuid;
         VClock vclock;
         QJsonObject fields; // standard + custom string attributes only
+        // Device that originally created the entry: "desktop" or "mobile".
+        // Metadata only: it is exchanged out-of-band (not part of fields/hash)
+        // so a different creating device never causes a spurious content conflict.
+        QString origin;
         mutable QString contentHash;
 
         QString computeHash() const
@@ -132,6 +136,7 @@ namespace PmpSync
             o["uuid"] = uuid;
             o["vclock"] = vclock.toJson();
             o["fields"] = fields;
+            o["origin"] = origin;
             o["hash"] = contentHash;
             return o;
         }
@@ -141,6 +146,7 @@ namespace PmpSync
             s.uuid = o.value("uuid").toString();
             s.vclock = VClock::fromJson(o.value("vclock"));
             s.fields = o.value("fields").toObject();
+            s.origin = o.value("origin").toString();
             s.contentHash = o.value("hash").toString();
             return s;
         }

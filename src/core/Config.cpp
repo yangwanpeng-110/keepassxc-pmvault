@@ -105,7 +105,13 @@ static const QHash<Config::ConfigKey, ConfigDirective> configStrings = {
     {Config::GUI_AlwaysOnTop, {QS("GUI/GUI_AlwaysOnTop"), Local, false}},
     {Config::GUI_ToolButtonStyle, {QS("GUI/ToolButtonStyle"), Roaming, Qt::ToolButtonIconOnly}},
     {Config::GUI_LaunchAtStartup, {QS("GUI/LaunchAtStartup"), Roaming, false}},
+#ifdef Q_OS_WIN
+    // PmVault: show the tray icon by default on Windows so the minimize-to-
+    // tray / taskbar choice (and close-to-tray) is available out of the box.
+    {Config::GUI_ShowTrayIcon, {QS("GUI/ShowTrayIcon"), Roaming, true}},
+#else
     {Config::GUI_ShowTrayIcon, {QS("GUI/ShowTrayIcon"), Roaming, false}},
+#endif
     {Config::GUI_TrayIconAppearance, {QS("GUI/TrayIconAppearance"), Roaming, {}}},
     {Config::GUI_MinimizeToTray, {QS("GUI/MinimizeToTray"), Roaming, false}},
     {Config::GUI_MinimizeOnStartup, {QS("GUI/MinimizeOnStartup"), Roaming, false}},

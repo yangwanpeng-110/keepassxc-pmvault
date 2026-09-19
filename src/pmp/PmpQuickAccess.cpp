@@ -55,6 +55,16 @@ void PmpQuickAccess::install()
     registerHotkey();
 }
 
+void PmpQuickAccess::reload()
+{
+    if (!m_installed) {
+        return;
+    }
+    unregisterHotkey();
+    loadSettings();
+    registerHotkey();
+}
+
 void PmpQuickAccess::loadSettings()
 {
     QSettings settings(QStringLiteral("PmVault"), QStringLiteral("PmVault"));

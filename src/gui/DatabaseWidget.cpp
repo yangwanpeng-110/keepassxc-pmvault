@@ -57,6 +57,7 @@
 #include "gui/widgets/ElidedLabel.h"
 #include "keeshare/KeeShare.h"
 #include "pmp/PmpAuditLog.h"
+#include "pmp/PmpPlatform.h"
 
 #ifdef WITH_XC_NETWORKING
 #include "gui/IconDownloaderDialog.h"
@@ -2427,9 +2428,12 @@ bool DatabaseWidget::saveAs()
     QString oldFilePath = m_db->filePath();
     if (!QFileInfo::exists(oldFilePath)) {
         QString defaultFileName = config()->get(Config::DefaultDatabaseFileName).toString();
-        oldFilePath =
-            QDir::toNativeSeparators(FileDialog::getLastDir("db") + "/"
-                                     + (defaultFileName.isEmpty() ? tr("Passwords").append(".kdbx") : defaultFileName));
+        if (defaultFileName.isEmpty()) {
+            defaultFileName = tr("Passwords").append(".kdbx");
+        }
+        // PmVault: default new databases to the per-user AppData folder
+        // (%APPDATA%/PmVault on Windows). The user may still choose another path.
+        oldFilePath = QDir::toNativeSeparators(PmpPlatform::appDataDir() + "/" + defaultFileName);
     }
     const QString newFilePath = fileDialog()->getSaveFileName(
         this, tr("Save database as"), oldFilePath, tr("KeePass 2 Database").append(" (*.kdbx)"));

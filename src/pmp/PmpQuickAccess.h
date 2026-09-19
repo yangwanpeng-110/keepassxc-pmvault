@@ -31,6 +31,10 @@ public:
     // Register the global hotkey and wire the manager. Safe to call once.
     void install();
 
+    // Re-read the device-local QSettings and re-register the hotkey.
+    // Called by the application settings page after the user edits the shortcut.
+    void reload();
+
     // QAbstractNativeEventFilter
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     bool nativeEventFilter(const QByteArray& eventType, void* message, qintptr* result) override;

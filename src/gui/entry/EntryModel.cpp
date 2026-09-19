@@ -116,7 +116,7 @@ int EntryModel::columnCount(const QModelIndex& parent) const
         return 0;
     }
 
-    return 17;
+    return 18;
 }
 
 QVariant EntryModel::data(const QModelIndex& index, int role) const
@@ -271,6 +271,9 @@ QVariant EntryModel::data(const QModelIndex& index, int role) const
             return entry->hasTotp();
         case Size:
             return entry->size();
+        case Origin:
+            // Phone entries sort after desktop entries.
+            return entry->customData()->value(QStringLiteral("PM:Origin")) == QLatin1String("mobile") ? 1 : 0;
         default:
             // For all other columns, simply use data provided by Qt::Display-
             // Role for sorting
@@ -323,6 +326,13 @@ QVariant EntryModel::data(const QModelIndex& index, int role) const
                 }
             }
             break;
+        case Origin: {
+            // Fixed source-device marker: phone for entries created on a mobile
+            // client, computer for everything else. Cannot be customized per entry.
+            const QString origin = entry->customData()->value(QStringLiteral("PM:Origin"));
+            return icons()->icon(origin == QLatin1String("mobile") ? "pmp-origin-mobile"
+                                                                   : "pmp-origin-desktop");
+        }
         }
     } else if (role == Qt::FontRole) {
         QFont font;
@@ -364,6 +374,10 @@ QVariant EntryModel::data(const QModelIndex& index, int role) const
         if (index.column() == PasswordStrength && !entry->password().isEmpty() && !entry->excludeFromReports()) {
             return entry->passwordHealth()->scoreReason();
         }
+        if (index.column() == Origin) {
+            const QString origin = entry->customData()->value(QStringLiteral("PM:Origin"));
+            return origin == QLatin1String("mobile") ? tr("Created on phone") : tr("Created on computer");
+        }
     }
 
     return QVariant();
@@ -399,6 +413,8 @@ QVariant EntryModel::headerData(int section, Qt::Orientation orientation, int ro
             return tr("Attachments");
         case Size:
             return tr("Size");
+        case Origin:
+            return tr("Origin");
         }
 
     } else if (role == Qt::DecorationRole) {
@@ -444,6 +460,8 @@ QVariant EntryModel::headerData(int section, Qt::Orientation orientation, int ro
             return tr("Has TOTP");
         case Color:
             return tr("Background Color");
+        case Origin:
+            return tr("Device that created the entry");
         }
     }
 

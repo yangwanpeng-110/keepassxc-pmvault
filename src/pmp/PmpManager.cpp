@@ -25,6 +25,7 @@
 #include <algorithm>
 
 #include <QApplication>
+#include <QAction>
 #include <QBuffer>
 #include <QClipboard>
 #include <QColor>
@@ -151,8 +152,11 @@ void PmpManager::install()
     menu->addAction(QObject::tr("Enable Second Factor (TOTP)…"), this, &PmpManager::enrollTwoFactor);
     menu->addAction(QObject::tr("Remove Second Factor…"), this, &PmpManager::removeTwoFactor);
     menu->addSeparator();
-    menu->addAction(QObject::tr("Database Security / Key File…"), this, &PmpManager::openDatabaseSecurity);
-    menu->addAction(QObject::tr("Quick Access Hotkey Settings…"), this, &PmpManager::quickAccessSettings);
+    // The password generator reuses the toolbar's checkable page-switch action
+    // so menu and toolbar always drive the same stacked-widget page.
+    if (auto* genAction = mw->findChild<QAction*>("actionPasswordGenerator")) {
+        menu->addAction(genAction);
+    }
     menu->addSeparator();
     menu->addAction(QObject::tr("View Audit Log…"), this, &PmpManager::showAuditLog);
     menu->addAction(QObject::tr("LAN Sync…"), this, &PmpManager::showSync);

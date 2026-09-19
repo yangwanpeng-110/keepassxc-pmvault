@@ -364,9 +364,7 @@
     <property name="title">
      <string>&amp;Tools</string>
     </property>
-    <addaction name="actionPasswordGenerator"/>
     <addaction name="actionClearSSHAgent"/>
-    <addaction name="actionSettings"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -394,11 +392,12 @@
     <addaction name="separator"/>
     <addaction name="actionHideUsernames"/>
     <addaction name="actionHidePasswords"/>
+    <addaction name="separator"/>
+    <addaction name="actionSettings"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEntries"/>
    <addaction name="menuGroups"/>
-   <addaction name="menuTools"/>
    <addaction name="menuView"/>
    <addaction name="menuHelp"/>
   </widget>
@@ -436,7 +435,6 @@
    <addaction name="separator"/>
    <addaction name="actionDatabaseSettings"/>
    <addaction name="actionReports"/>
-   <addaction name="separator"/>
    <addaction name="actionPasswordGenerator"/>
    <addaction name="actionSettings"/>
    <addaction name="separator"/>

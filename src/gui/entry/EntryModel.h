@@ -50,7 +50,8 @@ public:
         Size = 13,
         PasswordStrength = 14,
         Color = 15,
-        ParentGroupPath = 16
+        ParentGroupPath = 16,
+        Origin = 17 // PmVault: device that created the entry (desktop/mobile)
     };
 
     explicit EntryModel(QObject* parent = nullptr);

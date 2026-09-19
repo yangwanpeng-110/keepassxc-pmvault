@@ -1869,6 +1869,10 @@ Are you sure you want to continue with this file?.</source>
         <source>Failed to authenticate with Windows Hello: %1</source>
         <translation>Windows Hello 验证失败：%1</translation>
     </message>
+    <message>
+        <source>Please enter the master password. A key file can only be used together with the master password.</source>
+        <translation>请输入主密码。密钥文件只能与主密码配合使用，不能单独解锁。</translation>
+    </message>
 </context>
 <context>
     <name>DatabaseSettingWidgetMetaData</name>
@@ -2106,6 +2110,14 @@ Are you sure you want to continue without a password?</source>
     <message>
         <source>The provided password does not meet the minimum quality requirement.</source>
         <translation>提供的密码未达到最低强度要求。</translation>
+    </message>
+    <message>
+        <source>Master password required</source>
+        <translation>必须设置主密码</translation>
+    </message>
+    <message>
+        <source>A master password is required to secure the database. A key file can only be used as an additional factor together with the master password.</source>
+        <translation>必须设置主密码才能保护数据库。密钥文件只能作为附加因素，与主密码配合使用。</translation>
     </message>
 </context>
 <context>
@@ -4278,6 +4290,22 @@ Would you like to overwrite the existing attachment?</source>
     <message>
         <source>Group Path</source>
         <translation>群组路径</translation>
+    </message>
+    <message>
+        <source>Origin</source>
+        <translation>建立标志</translation>
+    </message>
+    <message>
+        <source>Created on phone</source>
+        <translation>在手机上创建</translation>
+    </message>
+    <message>
+        <source>Created on computer</source>
+        <translation>在电脑上创建</translation>
+    </message>
+    <message>
+        <source>Device that created the entry</source>
+        <translation>创建该条目的设备</translation>
     </message>
 </context>
 <context>
@@ -9310,6 +9338,18 @@ This option is deprecated, use --set-key-file instead.</source>
     <message>
         <source>This device's TLS identity could not be created. Check the installation and retry.</source>
         <translation>无法创建本设备的 TLS 身份，请检查安装后重试。</translation>
+    </message>
+    <message>
+        <source>Quick Access Hotkey</source>
+        <translation>快捷访问热键</translation>
+    </message>
+    <message>
+        <source>Enable the global hotkey</source>
+        <translation>启用全局热键</translation>
+    </message>
+    <message>
+        <source>The hotkey opens a small panel to copy credentials or run Auto-Type from anywhere. When the database is locked, it raises the unlock screen.</source>
+        <translation>按下热键可在任意位置弹出小面板以复制凭据或执行自动输入。数据库锁定时，将唤起解锁界面。</translation>
     </message>
 </context>
 <context>

@@ -45,6 +45,7 @@
 #include "gui/SearchWidget.h"
 #include "gui/entry/EntryView.h"
 #include "gui/osutils/OSUtils.h"
+#include "pmp/PmpQuickAccessSettingsPage.h"
 
 #ifdef WITH_XC_UPDATECHECK
 #include "gui/UpdateCheckDialog.h"
@@ -229,6 +230,9 @@ MainWindow::MainWindow()
     fdoSS->updateServiceState();
     m_ui->settingsWidget->addSettingsPage(fdoSS);
 #endif
+
+    // PmVault: global quick-access hotkey settings page (always available).
+    m_ui->settingsWidget->addSettingsPage(new PmpQuickAccessSettingsPage());
 
 #ifdef WITH_XC_YUBIKEY
     connect(YubiKey::instance(), SIGNAL(userInteractionRequest()), SLOT(showYubiKeyPopup()), Qt::QueuedConnection);

@@ -355,8 +355,8 @@ list(APPEND keepassx_SOURCES
         pmp/PmpAuditLog.cpp
         pmp/PmpTwoFactor.cpp
         pmp/PmpIdentity.cpp
-        pmp/PmpHello.cpp
         pmp/PmpQuickAccess.cpp
+        pmp/PmpQuickAccessSettingsPage.cpp
         pmp/PmpSync.cpp
         pmp/PmpManager.cpp)
 

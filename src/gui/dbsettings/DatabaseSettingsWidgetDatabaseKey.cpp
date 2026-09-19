@@ -167,24 +167,17 @@ bool DatabaseSettingsWidgetDatabaseKey::saveSettings()
         }
     }
 
-    // Show warning if database password has not been set
+    // PmVault security policy: a master password is mandatory. A key file is
+    // only a secondary factor and can never secure the database on its own.
     if (m_passwordEditWidget->visiblePage() == KeyComponentWidget::Page::AddNew
         || (m_passwordEditWidget->visiblePage() == KeyComponentWidget::Page::Edit && m_passwordEditWidget->isEmpty())) {
-
-        QScopedPointer<QMessageBox> msgBox(new QMessageBox(this));
-        msgBox->setIcon(QMessageBox::Warning);
-        msgBox->setWindowTitle(tr("No password set"));
-        msgBox->setText(tr("WARNING! You have not set a password. Using a database without "
-                           "a password is strongly discouraged!\n\n"
-                           "Are you sure you want to continue without a password?"));
-        auto btn = msgBox->addButton(tr("Continue without password"), QMessageBox::ButtonRole::AcceptRole);
-        msgBox->addButton(QMessageBox::Cancel);
-        msgBox->setDefaultButton(QMessageBox::Cancel);
-        msgBox->layout()->setSizeConstraint(QLayout::SetMinimumSize);
-        msgBox->exec();
-        if (msgBox->clickedButton() != btn) {
-            return false;
-        }
+        MessageBox::critical(this,
+                             tr("Master password required"),
+                             tr("A master password is required to secure the database. A key file can only be "
+                                "used as an additional factor together with the master password."),
+                             MessageBox::Ok,
+                             MessageBox::Ok);
+        return false;
     } else if (!addToCompositeKey(m_passwordEditWidget, newKey, oldPasswordKey)) {
         return false;
     }

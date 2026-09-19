@@ -46,6 +46,7 @@ namespace
     const QString K_VCLOCK = QStringLiteral("PM:VClock");
     const QString K_LASTHASH = QStringLiteral("PM:LastSyncHash");
     const QString K_TOMBS = QStringLiteral("PM:Tombstones");
+    const QString K_ORIGIN = QStringLiteral("PM:Origin");
 
     QString uuidStr(const Entry* e)
     {
@@ -347,6 +348,15 @@ PmpSync::State PmpSyncEngine::buildLocalState()
         Snapshot snap;
         snap.uuid = uuid;
         snap.fields = fields;
+        // Creating-device marker. This build is a desktop client: entries without
+        // an explicit origin are tagged "desktop" and persisted so the mobile
+        // client can distinguish them after sync.
+        QString origin = e->customData()->value(K_ORIGIN);
+        if (origin.isEmpty()) {
+            origin = QStringLiteral("desktop");
+            e->customData()->set(K_ORIGIN, origin);
+        }
+        snap.origin = origin;
         snap.computeHash();
 
         // Vector clock: initialise if needed, and tick when content changed
@@ -561,6 +571,8 @@ void PmpSyncEngine::applyMergeAndReply()
                 const bool protect = (it.key() == EntryAttributes::PasswordKey);
                 e->attributes()->set(it.key(), it.value().toString(), protect);
             }
+            e->customData()->set(K_ORIGIN,
+                                 a.snap.origin.isEmpty() ? QStringLiteral("desktop") : a.snap.origin);
             VClock vc = mergeClock(m_local.live.value(a.snap.uuid), a.snap.vclock);
             vc.tick(m_selfNode);
             writeClockAndHash(e, vc, a.snap.computeHash());
@@ -578,6 +590,8 @@ void PmpSyncEngine::applyMergeAndReply()
                 const bool protect = (it.key() == EntryAttributes::PasswordKey);
                 e->attributes()->set(it.key(), it.value().toString(), protect);
             }
+            e->customData()->set(K_ORIGIN,
+                                 a.snap.origin.isEmpty() ? QStringLiteral("desktop") : a.snap.origin);
             Snapshot copySnap = a.snap;
             copySnap.fields = fields;
             VClock vc = a.snap.vclock;
