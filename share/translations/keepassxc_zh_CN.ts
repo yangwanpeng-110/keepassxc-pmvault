@@ -8993,6 +8993,280 @@ This option is deprecated, use --set-key-file instead.</source>
         <source>Only PBKDF and Argon2 are supported, cannot decrypt json file</source>
         <translation>仅有 PBKDF 和 Argon2 受支持，无法解密 JSON 文件</translation>
     </message>
+    <message>
+        <source>No database bound to the audit log.</source>
+        <translation>审计日志未绑定数据库。</translation>
+    </message>
+    <message numerus="yes">
+        <source>Audit chain intact: %n record(s).</source>
+        <translation>
+        <numerusform>审计链完整：共 %n 条记录。</numerusform>
+    </translation>
+    </message>
+    <message>
+        <source>Tampering detected: chain breaks at record %1 of %2.</source>
+        <translation>检测到篡改：哈希链在第 %1/%2 条记录处断裂。</translation>
+    </message>
+    <message>
+        <source>Truncation detected: the log tail does not match the integrity anchor.</source>
+        <translation>检测到截断：日志末尾与完整性锚点不匹配。</translation>
+    </message>
+    <message>
+        <source>Unlock</source>
+        <translation>解锁</translation>
+    </message>
+    <message>
+        <source>Unlock failed</source>
+        <translation>解锁失败</translation>
+    </message>
+    <message>
+        <source>Second factor</source>
+        <translation>第二因素</translation>
+    </message>
+    <message>
+        <source>Second factor failed</source>
+        <translation>第二因素验证失败</translation>
+    </message>
+    <message>
+        <source>Second factor enrolled</source>
+        <translation>已启用第二因素</translation>
+    </message>
+    <message>
+        <source>Second factor removed</source>
+        <translation>已移除第二因素</translation>
+    </message>
+    <message>
+        <source>Lock</source>
+        <translation>锁定</translation>
+    </message>
+    <message>
+        <source>Password changed</source>
+        <translation>密码已更改</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>复制</translation>
+    </message>
+    <message>
+        <source>Browser DOM fill</source>
+        <translation>浏览器 DOM 填充</translation>
+    </message>
+    <message>
+        <source>LAN sync</source>
+        <translation>局域网同步</translation>
+    </message>
+    <message>
+        <source>LAN sync failed</source>
+        <translation>局域网同步失败</translation>
+    </message>
+    <message>
+        <source>Configuration changed</source>
+        <translation>配置已更改</translation>
+    </message>
+    <message>
+        <source>Log rotated</source>
+        <translation>日志已轮转</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>未知</translation>
+    </message>
+    <message>
+        <source>Success</source>
+        <translation>成功</translation>
+    </message>
+    <message>
+        <source>Failure</source>
+        <translation>失败</translation>
+    </message>
+    <message>
+        <source>Denied</source>
+        <translation>已拒绝</translation>
+    </message>
+    <message>
+        <source>Info</source>
+        <translation>信息</translation>
+    </message>
+    <message>
+        <source>password</source>
+        <translation>密码</translation>
+    </message>
+    <message>
+        <source>notes</source>
+        <translation>备注</translation>
+    </message>
+    <message>
+        <source>other</source>
+        <translation>其他</translation>
+    </message>
+    <message>
+        <source>local database</source>
+        <translation>本地数据库</translation>
+    </message>
+    <message>
+        <source>browser DOM</source>
+        <translation>浏览器 DOM</translation>
+    </message>
+    <message>
+        <source>desktop window</source>
+        <translation>桌面窗口</translation>
+    </message>
+    <message>
+        <source>LAN peer</source>
+        <translation>局域网对端</translation>
+    </message>
+    <message>
+        <source>6-digit code</source>
+        <translation>6 位验证码</translation>
+    </message>
+    <message>
+        <source>Enter the current code from your authenticator app:</source>
+        <translation>请输入验证器应用中显示的当前验证码：</translation>
+    </message>
+    <message>
+        <source>Enable Second Factor (TOTP)…</source>
+        <translation>启用第二因素（TOTP）…</translation>
+    </message>
+    <message>
+        <source>Remove Second Factor…</source>
+        <translation>移除第二因素…</translation>
+    </message>
+    <message>
+        <source>View Audit Log…</source>
+        <translation>查看审计日志…</translation>
+    </message>
+    <message>
+        <source>LAN Sync…</source>
+        <translation>局域网同步…</translation>
+    </message>
+    <message>
+        <source>Second Factor Required</source>
+        <translation>需要第二因素</translation>
+    </message>
+    <message>
+        <source>Second Factor Locked</source>
+        <translation>第二因素已锁定</translation>
+    </message>
+    <message>
+        <source>Too many failed attempts. Try again in %1 seconds.</source>
+        <translation>失败次数过多，请在 %1 秒后重试。</translation>
+    </message>
+    <message>
+        <source>Verification Failed</source>
+        <translation>验证失败</translation>
+    </message>
+    <message>
+        <source>The code was incorrect.</source>
+        <translation>验证码不正确。</translation>
+    </message>
+    <message>
+        <source>No enrollment in progress. Start enrollment again.</source>
+        <translation>没有正在进行的启用流程，请重新开始启用。</translation>
+    </message>
+    <message>
+        <source>The TOTP code did not match. Scan the QR code and try again.</source>
+        <translation>TOTP 验证码不匹配，请扫描二维码后重试。</translation>
+    </message>
+    <message>
+        <source>Failed to write the local second-factor vault.</source>
+        <translation>写入本地第二因素保险库失败。</translation>
+    </message>
+    <message numerus="yes">
+        <source>Too many failed attempts. Try again in %n second(s).</source>
+        <translation>
+        <numerusform>失败次数过多，请在 %n 秒后重试。</numerusform>
+    </translation>
+    </message>
+    <message>
+        <source>Enter the %1-digit code.</source>
+        <translation>请输入 %1 位验证码。</translation>
+    </message>
+    <message>
+        <source>This code has already been used. Wait for the next code.</source>
+        <translation>该验证码已被使用，请等待下一个验证码。</translation>
+    </message>
+    <message>
+        <source>Incorrect code. %1 attempt(s) remaining before a longer lockout. Retry in %2 second(s).</source>
+        <translation>验证码不正确。距离更长时间锁定还剩 %1 次尝试机会，请在 %2 秒后重试。</translation>
+    </message>
+    <message>
+        <source>Listening for a single LAN peer on port %1 (30 s)…</source>
+        <translation>正在端口 %1 上监听单个局域网对端（30 秒）…</translation>
+    </message>
+    <message>
+        <source>Could not listen on port %1: %2</source>
+        <translation>无法在端口 %1 上监听：%2</translation>
+    </message>
+    <message>
+        <source>Connecting to %1:%2 over TLS 1.3…</source>
+        <translation>正在通过 TLS 1.3 连接 %1:%2…</translation>
+    </message>
+    <message>
+        <source>Sync completed; peer disconnected.</source>
+        <translation>同步完成；对端已断开连接。</translation>
+    </message>
+    <message>
+        <source>Incoming connection was not a TLS socket.</source>
+        <translation>入站连接不是 TLS 套接字。</translation>
+    </message>
+    <message>
+        <source>Peer connected from %1</source>
+        <translation>对端已从 %1 连接</translation>
+    </message>
+    <message>
+        <source>Peer presented no certificate; mutual TLS required.</source>
+        <translation>对端未提供证书；双向 TLS 要求必须提供证书。</translation>
+    </message>
+    <message>
+        <source>Peer certificate fingerprint not trusted:
+%1</source>
+        <translation>对端证书指纹不受信任：
+%1</translation>
+    </message>
+    <message>
+        <source>Mutual TLS failed: no peer certificate.</source>
+        <translation>双向 TLS 失败：对端没有提供证书。</translation>
+    </message>
+    <message>
+        <source>Peer address %1 is not on the local network.</source>
+        <translation>对端地址 %1 不在本地网络中。</translation>
+    </message>
+    <message>
+        <source>Negotiated protocol is not TLS 1.3; aborting.</source>
+        <translation>协商的协议不是 TLS 1.3，已中止。</translation>
+    </message>
+    <message>
+        <source>TLS 1.3 secured with peer %1</source>
+        <translation>已与对端 %1 建立 TLS 1.3 安全连接</translation>
+    </message>
+    <message>
+        <source>Sync completed before timeout.</source>
+        <translation>同步在超时前完成。</translation>
+    </message>
+    <message>
+        <source>Sync timed out waiting for the peer.</source>
+        <translation>等待对端超时，同步失败。</translation>
+    </message>
+    <message>
+        <source>Peer applied changes (upsert %1, delete %2, copies %3)</source>
+        <translation>对端已应用更改（新增/更新 %1，删除 %2，冲突副本 %3）</translation>
+    </message>
+    <message>
+        <source>Two-way sync completed.</source>
+        <translation>双向同步完成。</translation>
+    </message>
+    <message>
+        <source> (conflict copy %1)</source>
+        <translation>（冲突副本 %1）</translation>
+    </message>
+    <message>
+        <source>Merged: %1 updated, %2 deleted, %3 conflict copies.</source>
+        <translation>已合并：更新 %1 项，删除 %2 项，冲突副本 %3 项。</translation>
+    </message>
+    <message>
+        <source>Sync failed: %1</source>
+        <translation>同步失败：%1</translation>
+    </message>
 </context>
 <context>
     <name>QtIOCompressor</name>
@@ -10256,6 +10530,185 @@ Example: JBSWY3DPEHPK3PXP</source>
         <source>Unknown</source>
         <comment>Unknown hardware key name</comment>
         <translation>未知</translation>
+    </message>
+</context>
+<context>
+    <name>PmpManager</name>
+    <message>
+        <source>Open a database first.</source>
+        <translation>请先打开数据库。</translation>
+    </message>
+    <message>
+        <source>A second factor is already enrolled for this database on this device.</source>
+        <translation>此设备上已为该数据库启用第二因素。</translation>
+    </message>
+    <message>
+        <source>Enable Second Factor (TOTP)</source>
+        <translation>启用第二因素（TOTP）</translation>
+    </message>
+    <message>
+        <source>1. Add this secret to Google Authenticator (or any TOTP app).
+You can scan the QR code or type the key manually. PmVault never reads the app.</source>
+        <translation>1. 将此密钥添加到 Google 身份验证器（或任意 TOTP 应用）。
+可扫描二维码，或手动输入密钥。PmVault 不会读取该应用。</translation>
+    </message>
+    <message>
+        <source>Setup key (Base32):</source>
+        <translation>设置密钥（Base32）：</translation>
+    </message>
+    <message>
+        <source>2. Enter the current 6-digit code to confirm:</source>
+        <translation>2. 输入当前的 6 位验证码以确认：</translation>
+    </message>
+    <message>
+        <source>Enrollment Failed</source>
+        <translation>启用失败</translation>
+    </message>
+    <message>
+        <source>The confirmation code did not match.</source>
+        <translation>确认验证码不匹配。</translation>
+    </message>
+    <message>
+        <source>Second factor enabled on this device.
+The seed is stored only in this device's encrypted vault, not in the database.</source>
+        <translation>第二因素已在此设备上启用。
+种子仅保存在本设备的加密保险库中，不会存入数据库。</translation>
+    </message>
+    <message>
+        <source>No second factor is enrolled on this device.</source>
+        <translation>此设备上尚未启用第二因素。</translation>
+    </message>
+    <message>
+        <source>Remove Second Factor</source>
+        <translation>移除第二因素</translation>
+    </message>
+    <message>
+        <source>Verification failed.</source>
+        <translation>验证失败。</translation>
+    </message>
+    <message>
+        <source>Second factor removed on this device.</source>
+        <translation>已在此设备上移除第二因素。</translation>
+    </message>
+    <message>
+        <source>PmVault Audit Log</source>
+        <translation>PmVault 审计日志</translation>
+    </message>
+    <message>
+        <source>Integrity: chain=%1 anchor=%2 truncated=%3  ·  %4 readable records, last seq %5
+%6</source>
+        <translation>完整性：链=%1 锚点=%2 截断=%3  ·  可读记录 %4 条，最后序号 %5
+%6</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>正常</translation>
+    </message>
+    <message>
+        <source>BROKEN</source>
+        <translation>已断裂</translation>
+    </message>
+    <message>
+        <source>YES</source>
+        <translation>是</translation>
+    </message>
+    <message>
+        <source>no</source>
+        <translation>否</translation>
+    </message>
+    <message>
+        <source>Time (UTC)</source>
+        <translation>时间（UTC）</translation>
+    </message>
+    <message>
+        <source>Event</source>
+        <translation>事件</translation>
+    </message>
+    <message>
+        <source>Outcome</source>
+        <translation>结果</translation>
+    </message>
+    <message>
+        <source>Field</source>
+        <translation>字段</translation>
+    </message>
+    <message>
+        <source>Target</source>
+        <translation>目标</translation>
+    </message>
+    <message>
+        <source>PmVault LAN Sync (TLS 1.3)</source>
+        <translation>PmVault 局域网同步（TLS 1.3）</translation>
+    </message>
+    <message>
+        <source>Listen for an incoming peer (single, 30 s)</source>
+        <translation>监听入站对端（单个，30 秒）</translation>
+    </message>
+    <message>
+        <source>Connect to a peer</source>
+        <translation>连接到对端</translation>
+    </message>
+    <message>
+        <source>peer LAN IP, e.g. 192.168.1.20</source>
+        <translation>对端局域网 IP，例如 192.168.1.20</translation>
+    </message>
+    <message>
+        <source>Keep both on conflict (recommended)</source>
+        <translation>冲突时保留双方（推荐）</translation>
+    </message>
+    <message>
+        <source>Delete wins on delete/edit conflict</source>
+        <translation>删除/编辑冲突时以删除操作为准</translation>
+    </message>
+    <message>
+        <source>Peer host:</source>
+        <translation>对端主机：</translation>
+    </message>
+    <message>
+        <source>Port:</source>
+        <translation>端口：</translation>
+    </message>
+    <message>
+        <source>Conflict policy:</source>
+        <translation>冲突策略：</translation>
+    </message>
+    <message>
+        <source>This device node: %1</source>
+        <translation>本设备节点：%1</translation>
+    </message>
+    <message>
+        <source>Start</source>
+        <translation>开始</translation>
+    </message>
+    <message>
+        <source>Starting…</source>
+        <translation>正在启动…</translation>
+    </message>
+    <message>
+        <source>Unknown peer certificate.
+
+Fingerprint (SHA-256):
+%1
+
+Trust this device for this database?</source>
+        <translation>未知的对端证书。
+
+指纹（SHA-256）：
+%1
+
+是否为此数据库信任该设备？</translation>
+    </message>
+    <message>
+        <source>Trust Peer?</source>
+        <translation>信任该对端？</translation>
+    </message>
+    <message>
+        <source>DONE: %1  (updated %2, deleted %3, conflict copies %4)</source>
+        <translation>完成：%1（更新 %2，删除 %3，冲突副本 %4）</translation>
+    </message>
+    <message>
+        <source>FAILED: %1</source>
+        <translation>失败：%1</translation>
     </message>
 </context>
 </TS>
