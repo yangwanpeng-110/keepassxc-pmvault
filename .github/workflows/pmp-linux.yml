@@ -38,7 +38,21 @@ jobs:
             -DWITH_XC_X11=OFF
 
       - name: Build
-        run: cmake --build build -j 2
+        shell: bash
+        run: |
+          set +e
+          cmake --build build -j 2 2>&1 | tee /tmp/pmvault-build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Compiler/linker diagnostics"
+            grep -E "error:|fatal error:|undefined reference|No such file or directory|ninja: build stopped|collect2:" /tmp/pmvault-build.log | head -n 100 || true
+            echo "::endgroup::"
+            grep -E "error:|fatal error:|undefined reference|No such file or directory" /tmp/pmvault-build.log | head -n 40 | while IFS= read -r line; do
+              msg=$(printf '%s' "$line" | tr '\r\n' '  ' | cut -c1-900)
+              printf '::error::%s\n' "$msg"
+            done
+            exit "$status"
+          fi
 
       - name: Smoke test
         run: ./build/src/cli/keepassxc-cli --version
