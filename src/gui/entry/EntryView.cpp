@@ -34,6 +34,7 @@
 #include "gui/SortFilterHideProxyModel.h"
 
 #define ICON_ONLY_SECTION_SIZE 26
+#define PMP_ORIGIN_SECTION_SIZE 80
 
 class PasswordStrengthItemDelegate : public QStyledItemDelegate
 {
@@ -338,6 +339,7 @@ bool EntryView::setViewState(const QByteArray& state)
 {
     // Reset to unsorted first (https://bugreports.qt.io/browse/QTBUG-86694)
     header()->setSortIndicator(-1, Qt::AscendingOrder);
+    prepareOriginColumn();
     bool status = header()->restoreState(state);
     resetFixedColumns();
     m_columnsNeedRelayout = state.isEmpty();
@@ -443,8 +445,7 @@ void EntryView::fitColumnsToContents()
  */
 void EntryView::resetFixedColumns()
 {
-    for (const auto& col :
-         {EntryModel::Paperclip, EntryModel::Totp, EntryModel::PasswordStrength, EntryModel::Origin}) {
+    for (const auto& col : {EntryModel::Paperclip, EntryModel::Totp, EntryModel::PasswordStrength}) {
         if (!isColumnHidden(col)) {
             header()->setSectionResizeMode(col, QHeaderView::Fixed);
 
@@ -459,6 +460,30 @@ void EntryView::resetFixedColumns()
     }
     header()->setMinimumSectionSize(1);
     header()->resizeSection(EntryModel::Color, ICON_ONLY_SECTION_SIZE);
+
+    // PmVault origin column: it carries a text header ("Origin") and a device
+    // icon, so keep it wide enough to read instead of collapsing to icon size.
+    if (!isColumnHidden(EntryModel::Origin)) {
+        header()->setSectionResizeMode(EntryModel::Origin, QHeaderView::Fixed);
+        header()->resizeSection(EntryModel::Origin, PMP_ORIGIN_SECTION_SIZE);
+    }
+}
+
+/**
+ * Position the PmVault Origin column for view states that predate it.
+ * Must run before header()->restoreState(): saved states without the Origin
+ * column leave it untouched at the position/size we set here, while states that
+ * already contain it still win after the restore.
+ */
+void EntryView::prepareOriginColumn()
+{
+    if (header()->count() <= EntryModel::Origin) {
+        return;
+    }
+    header()->showSection(EntryModel::Origin);
+    header()->moveSection(header()->visualIndex(EntryModel::Origin),
+                          header()->visualIndex(EntryModel::Expires));
+    header()->resizeSection(EntryModel::Origin, PMP_ORIGIN_SECTION_SIZE);
 }
 
 /**

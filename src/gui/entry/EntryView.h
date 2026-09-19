@@ -76,6 +76,7 @@ private slots:
 
 private:
     void resetFixedColumns();
+    void prepareOriginColumn();
     bool isColumnHidden(int logicalIndex);
     void onHeaderChanged();
 

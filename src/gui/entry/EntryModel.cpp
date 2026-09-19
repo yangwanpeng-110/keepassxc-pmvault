@@ -19,6 +19,7 @@
 
 #include <QFont>
 #include <QMimeData>
+#include <QApplication>
 #include <QPalette>
 
 #include "core/Clock.h"
@@ -327,11 +328,14 @@ QVariant EntryModel::data(const QModelIndex& index, int role) const
             }
             break;
         case Origin: {
-            // Fixed source-device marker: phone for entries created on a mobile
-            // client, computer for everything else. Cannot be customized per entry.
+            // Fixed source-device marker: phone (highlighted) for entries created
+            // on a mobile client, computer for everything else. Not user-editable.
             const QString origin = entry->customData()->value(QStringLiteral("PM:Origin"));
-            return icons()->icon(origin == QLatin1String("mobile") ? "pmp-origin-mobile"
-                                                                   : "pmp-origin-desktop");
+            if (origin == QLatin1String("mobile")) {
+                return icons()->icon("pmp-origin-mobile", true,
+                                     QApplication::palette().color(QPalette::Highlight));
+            }
+            return icons()->icon("pmp-origin-desktop");
         }
         }
     } else if (role == Qt::FontRole) {
