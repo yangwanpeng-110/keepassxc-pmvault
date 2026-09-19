@@ -36,6 +36,10 @@ DatabaseSettingsWidgetGeneral::DatabaseSettingsWidgetGeneral(QWidget* parent)
 {
     m_ui->setupUi(this);
 
+    // PmVault: the recycle-bin feature is removed from the product, so its
+    // toggle is hidden. The value is forced off on initialize/save as well.
+    m_ui->recycleBinEnabledCheckBox->setVisible(false);
+
     connect(m_ui->dbPublicColorButton, &QPushButton::clicked, this, &DatabaseSettingsWidgetGeneral::pickPublicColor);
     connect(m_ui->dbPublicColorClearButton, &QPushButton::clicked, this, [this] { setupPublicColorButton({}); });
     connect(m_ui->dbPublicIconButton, &QPushButton::clicked, this, &DatabaseSettingsWidgetGeneral::pickPublicIcon);
@@ -56,7 +60,8 @@ void DatabaseSettingsWidgetGeneral::initialize()
 
     m_ui->dbNameEdit->setText(meta->name());
     m_ui->dbDescriptionEdit->setText(meta->description());
-    m_ui->recycleBinEnabledCheckBox->setChecked(meta->recycleBinEnabled());
+    // PmVault: the recycle-bin feature is removed; always present/save as off.
+    m_ui->recycleBinEnabledCheckBox->setChecked(false);
     m_ui->defaultUsernameEdit->setText(meta->defaultUserName());
     m_ui->compressionCheckbox->setChecked(m_db->compressionAlgorithm() != Database::CompressionNone);
 

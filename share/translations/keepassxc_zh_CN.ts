@@ -9267,6 +9267,50 @@ This option is deprecated, use --set-key-file instead.</source>
         <source>Sync failed: %1</source>
         <translation>同步失败：%1</translation>
     </message>
+    <message>
+        <source>Database Security / Key File…</source>
+        <translation>数据库安全 / 密钥文件…</translation>
+    </message>
+    <message>
+        <source>Quick Access Hotkey Settings…</source>
+        <translation>快捷访问热键设置…</translation>
+    </message>
+    <message>
+        <source>(untitled)</source>
+        <translation>（未命名）</translation>
+    </message>
+    <message>
+        <source>Windows Hello is not available on this device (code %1).</source>
+        <translation>此设备不支持 Windows Hello（代码 %1）。</translation>
+    </message>
+    <message>
+        <source>Windows Hello verification was canceled or did not succeed.</source>
+        <translation>Windows Hello 验证已取消或未成功。</translation>
+    </message>
+    <message>
+        <source>Could not write the Windows Hello credential file.</source>
+        <translation>无法写入 Windows Hello 凭据文件。</translation>
+    </message>
+    <message>
+        <source>No Windows Hello credential is stored for this database on this device.</source>
+        <translation>此设备上未保存该数据库的 Windows Hello 凭据。</translation>
+    </message>
+    <message>
+        <source>Could not read the Windows Hello credential file.</source>
+        <translation>无法读取 Windows Hello 凭据文件。</translation>
+    </message>
+    <message>
+        <source>The stored Windows Hello credential could not be decrypted.</source>
+        <translation>无法解密已保存的 Windows Hello 凭据。</translation>
+    </message>
+    <message>
+        <source>TLS (OpenSSL) is not available in this build, so LAN sync cannot run.</source>
+        <translation>当前版本未提供 TLS（OpenSSL），无法运行局域网同步。</translation>
+    </message>
+    <message>
+        <source>This device's TLS identity could not be created. Check the installation and retry.</source>
+        <translation>无法创建本设备的 TLS 身份，请检查安装后重试。</translation>
+    </message>
 </context>
 <context>
     <name>QtIOCompressor</name>
@@ -10709,6 +10753,73 @@ Trust this device for this database?</source>
     <message>
         <source>FAILED: %1</source>
         <translation>失败：%1</translation>
+    </message>
+    <message>
+        <source>1. Scan the QR code with Google Authenticator (or any TOTP app) to add PmVault.
+PmVault never reads the authenticator app or the code shown on it; you only type the 6-digit code below to confirm.</source>
+        <translation>1. 使用 Google 身份验证器（或任意 TOTP 应用）扫描二维码以添加 PmVault。
+PmVault 不会读取验证器应用或其上显示的验证码；您只需在下方输入 6 位验证码进行确认。</translation>
+    </message>
+    <message>
+        <source>6-digit code</source>
+        <translation>6 位验证码</translation>
+    </message>
+    <message>
+        <source>Protect this database with a second factor (TOTP)?
+
+Scan a QR code with Google Authenticator and enter a 6-digit code on every unlock.
+You can also enable this later from the PmVault menu.</source>
+        <translation>是否为该数据库启用第二因素（TOTP）保护？
+
+使用 Google 身份验证器扫描二维码，此后每次解锁都需输入 6 位验证码。
+您也可以稍后在 PmVault 菜单中启用。</translation>
+    </message>
+    <message>
+        <source>TLS (OpenSSL) is not available in this build, so LAN sync cannot run.</source>
+        <translation>当前版本未提供 TLS（OpenSSL），无法运行局域网同步。</translation>
+    </message>
+    <message>
+        <source>This device's TLS identity could not be created. Check the installation and retry.</source>
+        <translation>无法创建本设备的 TLS 身份，请检查安装后重试。</translation>
+    </message>
+</context>
+<context>
+    <name>PmpQuickAccess</name>
+    <message>
+        <source>PmVault Quick Access</source>
+        <translation>PmVault 快捷访问</translation>
+    </message>
+    <message>
+        <source>Search title or username</source>
+        <translation>搜索标题或用户名</translation>
+    </message>
+    <message>
+        <source>Copy Username</source>
+        <translation>复制用户名</translation>
+    </message>
+    <message>
+        <source>Copy Password</source>
+        <translation>复制密码</translation>
+    </message>
+    <message>
+        <source>Auto-Type</source>
+        <translation>自动输入</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>Quick Access Hotkey</source>
+        <translation>快捷访问热键</translation>
+    </message>
+    <message>
+        <source>Enable the global hotkey</source>
+        <translation>启用全局热键</translation>
+    </message>
+    <message>
+        <source>The hotkey opens a small panel to copy credentials or run Auto-Type from anywhere. When the database is locked, it raises the unlock screen.</source>
+        <translation>按下热键可在任意位置弹出小面板以复制凭据或执行自动输入。数据库锁定时，将唤起解锁界面。</translation>
     </message>
 </context>
 </TS>

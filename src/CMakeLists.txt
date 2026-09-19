@@ -355,6 +355,8 @@ list(APPEND keepassx_SOURCES
         pmp/PmpAuditLog.cpp
         pmp/PmpTwoFactor.cpp
         pmp/PmpIdentity.cpp
+        pmp/PmpHello.cpp
+        pmp/PmpQuickAccess.cpp
         pmp/PmpSync.cpp
         pmp/PmpManager.cpp)
 
@@ -408,8 +410,9 @@ if(UNIX AND NOT APPLE)
 endif()
 if(WIN32)
     # crypt32 provides DPAPI (CryptProtectData/CryptUnprotectData) used by the PMP
-    # extension to seal the per-device key; Ws2_32 is needed for PMP LAN sync.
-    target_link_libraries(keepassx_core Wtsapi32.lib Ws2_32.lib crypt32)
+    # extension to seal the per-device key; Ws2_32 is needed for PMP LAN sync;
+    # user32 provides RegisterHotKey for the PMP global quick-access hotkey.
+    target_link_libraries(keepassx_core Wtsapi32.lib Ws2_32.lib crypt32 user32)
     if (WINSDK)
         target_link_libraries(keepassx_core WindowsApp.lib)
     endif()

@@ -36,6 +36,7 @@
 #include "gui/osutils/macutils/MacUtils.h"
 #endif
 #include "gui/wizard/NewDatabaseWizard.h"
+#include "pmp/PmpManager.h"
 #include "wizard/ImportWizard.h"
 
 DatabaseTabWidget::DatabaseTabWidget(QWidget* parent)
@@ -132,6 +133,10 @@ DatabaseWidget* DatabaseTabWidget::newDatabase()
     auto dbWidget = new DatabaseWidget(db, this);
     addDatabaseTab(dbWidget);
     db->markAsModified();
+
+    // PmVault: harden the new database (recycle bin removed) and offer to set
+    // up the second factor before the database is first used.
+    PmpManager::instance()->onDatabaseCreated(dbWidget);
     return dbWidget;
 }
 
@@ -283,6 +288,7 @@ DatabaseWidget* DatabaseTabWidget::importFile()
             // Show the new database
             auto dbWidget = new DatabaseWidget(newDb, this);
             addDatabaseTab(dbWidget);
+            PmpManager::hardenDatabase(newDb.data());
             newDb->markAsModified();
             return dbWidget;
         }

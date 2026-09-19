@@ -7,10 +7,16 @@
 #include "PmpAuditLog.h"
 #include "PmpConfig.h"
 #include "PmpIdentity.h"
+#include "PmpQuickAccess.h"
 #include "PmpSync.h"
 #include "PmpTwoFactor.h"
 
+#include "autotype/AutoType.h"
 #include "core/Database.h"
+#include "core/Entry.h"
+#include "core/EntryAttributes.h"
+#include "core/Group.h"
+#include "core/Metadata.h"
 #include "gui/DatabaseTabWidget.h"
 #include "gui/DatabaseWidget.h"
 #include "gui/MainWindow.h"
@@ -18,7 +24,15 @@
 
 #include <algorithm>
 
+#include <QApplication>
 #include <QBuffer>
+#include <QClipboard>
+#include <QColor>
+#include <QPalette>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
+#include <QSslSocket>
+#include <QTimer>
 #include <QComboBox>
 #include <QDateTime>
 #include <QDialog>
@@ -49,6 +63,26 @@ namespace
                std::all_of(s.constBegin(), s.constEnd(), [](QChar c) { return c.isDigit(); });
     }
 
+    // Configure a TOTP confirmation field:
+    //  - starts EMPTY (no prefilled mask placeholders / dots),
+    //  - digits appear in clear black text while typing (PasswordEchoOnEdit) and
+    //    are masked only after the field loses focus / is accepted,
+    //  - digits only, max 6, white background so black text stays readable.
+    void setupCodeEdit(QLineEdit* edit, const QString& placeholder)
+    {
+        edit->setPlaceholderText(placeholder);
+        edit->setMaxLength(6);
+        edit->setEchoMode(QLineEdit::PasswordEchoOnEdit);
+        edit->setValidator(
+            new QRegularExpressionValidator(QRegularExpression(QStringLiteral("\\d{0,6}")), edit));
+        edit->setStyleSheet(QStringLiteral("QLineEdit{color:#111111;background:#ffffff;"
+                                           "selection-background-color:#4F6B9A;selection-color:#ffffff;}"));
+        QPalette pal = edit->palette();
+        pal.setColor(QPalette::Text, QColor(QStringLiteral("#111111")));
+        pal.setColor(QPalette::PlaceholderText, QColor(QStringLiteral("#8a8f99")));
+        edit->setPalette(pal);
+    }
+
     // Prompt for a 6-digit TOTP code. Returns the code or an empty string if canceled.
     QString promptCode(QWidget* parent, const QString& title)
     {
@@ -56,10 +90,7 @@ namespace
         dlg.setWindowTitle(title);
         auto* form = new QVBoxLayout(&dlg);
         auto* edit = new QLineEdit(&dlg);
-        edit->setPlaceholderText(QObject::tr("6-digit code"));
-        edit->setMaxLength(6);
-        edit->setEchoMode(QLineEdit::Password);
-        edit->setInputMask("999999");
+        setupCodeEdit(edit, QObject::tr("6-digit code"));
         form->addWidget(new QLabel(QObject::tr("Enter the current code from your authenticator app:"), &dlg));
         form->addWidget(edit);
         auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
@@ -120,8 +151,14 @@ void PmpManager::install()
     menu->addAction(QObject::tr("Enable Second Factor (TOTP)…"), this, &PmpManager::enrollTwoFactor);
     menu->addAction(QObject::tr("Remove Second Factor…"), this, &PmpManager::removeTwoFactor);
     menu->addSeparator();
+    menu->addAction(QObject::tr("Database Security / Key File…"), this, &PmpManager::openDatabaseSecurity);
+    menu->addAction(QObject::tr("Quick Access Hotkey Settings…"), this, &PmpManager::quickAccessSettings);
+    menu->addSeparator();
     menu->addAction(QObject::tr("View Audit Log…"), this, &PmpManager::showAuditLog);
     menu->addAction(QObject::tr("LAN Sync…"), this, &PmpManager::showSync);
+
+    // Register the global quick-access hotkey.
+    PmpQuickAccess::instance()->install();
 
     // Record lock events centrally.
     connect(mw, &MainWindow::databaseLocked, this, [](DatabaseWidget*) {
@@ -198,8 +235,9 @@ void PmpManager::enrollTwoFactor()
     dlg.setWindowTitle(tr("Enable Second Factor (TOTP)"));
     auto* root = new QVBoxLayout(&dlg);
     root->addWidget(new QLabel(
-        tr("1. Add this secret to Google Authenticator (or any TOTP app).\n"
-           "You can scan the QR code or type the key manually. PmVault never reads the app."),
+        tr("1. Scan the QR code with Google Authenticator (or any TOTP app) to add PmVault.\n"
+           "PmVault never reads the authenticator app or the code shown on it; you only type the "
+           "6-digit code below to confirm."),
         &dlg));
 
     const QrCode qr(start.otpauthUri);
@@ -216,16 +254,9 @@ void PmpManager::enrollTwoFactor()
     qrRow->addStretch(1);
     root->addLayout(qrRow);
 
-    auto* secretEdit = new QLineEdit(start.secretB32, &dlg);
-    secretEdit->setReadOnly(true);
-    auto* secretForm = new QFormLayout();
-    secretForm->addRow(tr("Setup key (Base32):"), secretEdit);
-    root->addLayout(secretForm);
-
     root->addWidget(new QLabel(tr("2. Enter the current 6-digit code to confirm:"), &dlg));
     auto* codeEdit = new QLineEdit(&dlg);
-    codeEdit->setInputMask("999999");
-    codeEdit->setMaxLength(6);
+    setupCodeEdit(codeEdit, tr("6-digit code"));
     root->addWidget(codeEdit);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
@@ -349,6 +380,21 @@ void PmpManager::showSync()
         return;
     }
 
+    // Validate the TLS stack and this device's identity BEFORE constructing the
+    // dialog. Identity generation is exception-safe, but this also gives a clear
+    // error instead of a crash if anything is unavailable.
+    if (!QSslSocket::supportsSsl()) {
+        QMessageBox::critical(nullptr, tr("PmVault LAN Sync (TLS 1.3)"),
+                              tr("TLS (OpenSSL) is not available in this build, so LAN sync cannot run."));
+        return;
+    }
+    const PmpIdentity identity = PmpIdentityStore::loadOrCreate();
+    if (!identity.valid()) {
+        QMessageBox::critical(nullptr, tr("PmVault LAN Sync (TLS 1.3)"),
+                              tr("This device's TLS identity could not be created. Check the installation and retry."));
+        return;
+    }
+
     QDialog dlg;
     dlg.setWindowTitle(tr("PmVault LAN Sync (TLS 1.3)"));
     dlg.resize(560, 420);
@@ -376,8 +422,7 @@ void PmpManager::showSync()
     root->addLayout(form);
 
     auto* nodeLabel = new QLabel(&dlg);
-    const PmpIdentity id = PmpIdentityStore::loadOrCreate();
-    nodeLabel->setText(tr("This device node: %1").arg(id.nodeId));
+    nodeLabel->setText(tr("This device node: %1").arg(identity.nodeId));
     nodeLabel->setWordWrap(true);
     root->addWidget(nodeLabel);
 
@@ -438,4 +483,168 @@ void PmpManager::showSync()
     });
 
     dlg.exec();
+}
+
+void PmpManager::hardenDatabase(Database* db)
+{
+    if (!db || !db->metadata()) {
+        return;
+    }
+    Metadata* meta = db->metadata();
+    bool changed = false;
+    if (meta->recycleBinEnabled()) {
+        meta->setRecycleBinEnabled(false);
+        changed = true;
+    }
+    if (Group* bin = meta->recycleBin()) {
+        // Permanently drop the recycle-bin group (and the entries inside it).
+        // The QPointer held by Metadata is cleared when the Group is destroyed.
+        delete bin;
+        meta->setRecycleBin(nullptr);
+        changed = true;
+    }
+    if (changed) {
+        db->markAsModified();
+    }
+}
+
+QVector<PmpManager::QuickEntry> PmpManager::quickEntries()
+{
+    QVector<QuickEntry> result;
+    Database* db = instance()->currentDatabase();
+    Group* root = db ? db->rootGroup() : nullptr;
+    if (!root) {
+        return result;
+    }
+
+    const QList<Entry*> entries = root->entriesRecursive(false);
+    for (Entry* entry : entries) {
+        if (!entry) {
+            continue;
+        }
+        QuickEntry item;
+        item.uuid = entry->uuid().toString(QUuid::WithoutBraces);
+        item.title = entry->title();
+        item.username = entry->username();
+        if (item.title.isEmpty()) {
+            item.title = QObject::tr("(untitled)");
+        }
+        result.append(item);
+    }
+
+    std::sort(result.begin(), result.end(),
+              [](const QuickEntry& a, const QuickEntry& b) { return a.title.toLower() < b.title.toLower(); });
+    return result;
+}
+
+void PmpManager::quickCopy(const QString& uuid, bool password)
+{
+    Database* db = instance()->currentDatabase();
+    Group* root = db ? db->rootGroup() : nullptr;
+    if (!root) {
+        return;
+    }
+    Entry* entry = root->findEntryByUuid(QUuid::fromString(uuid));
+    if (!entry) {
+        return;
+    }
+    const QString value = password ? entry->password() : entry->username();
+    if (value.isEmpty()) {
+        return;
+    }
+
+    QApplication::clipboard()->setText(value);
+    PmpAuditLog::instance()->record(PmpAuditLog::EvCopy, PmpAuditLog::OcSuccess,
+                                    password ? PmpAuditLog::FldPassword : PmpAuditLog::FldUsername,
+                                    PmpAuditLog::TgtLocalDatabase);
+
+    int clearSeconds = PmpConfig::getInt(db, PmpConfig::Key::ClipboardClearSeconds);
+    if (clearSeconds <= 0) {
+        clearSeconds = 10;
+    }
+    const QString expected = value;
+    QTimer::singleShot(clearSeconds * 1000, qApp, [expected]() {
+        QClipboard* clipboard = QApplication::clipboard();
+        // Only clear if the clipboard still holds our value, never wipe
+        // something the user copied afterwards.
+        if (clipboard && clipboard->text() == expected) {
+            clipboard->clear();
+        }
+    });
+}
+
+void PmpManager::quickAutoType(const QString& uuid)
+{
+    Database* db = instance()->currentDatabase();
+    Group* root = db ? db->rootGroup() : nullptr;
+    if (!root) {
+        return;
+    }
+    Entry* entry = root->findEntryByUuid(QUuid::fromString(uuid));
+    if (!entry) {
+        return;
+    }
+    PmpAuditLog::instance()->record(PmpAuditLog::EvAutoType, PmpAuditLog::OcInfo, PmpAuditLog::FldNone,
+                                    PmpAuditLog::TgtDesktopWindow);
+    AutoType::instance()->performAutoType(entry);
+}
+
+bool PmpManager::hasUnlockedDatabase()
+{
+    return instance()->currentDatabase() != nullptr;
+}
+
+void PmpManager::requestMainWindow()
+{
+    MainWindow* mw = getMainWindow();
+    if (!mw) {
+        return;
+    }
+    mw->showNormal();
+    mw->raise();
+    mw->activateWindow();
+}
+
+void PmpManager::openDatabaseSecurity()
+{
+    DatabaseWidget* widget = nullptr;
+    if (!currentDatabase(&widget) || !widget) {
+        QMessageBox::information(nullptr, tr("PmVault"), tr("Open a database first."));
+        return;
+    }
+    widget->switchToDatabaseSecurity();
+}
+
+void PmpManager::quickAccessSettings()
+{
+    PmpQuickAccess::instance()->showSettings();
+}
+
+void PmpManager::onDatabaseCreated(DatabaseWidget* widget)
+{
+    if (!widget || !widget->database()) {
+        return;
+    }
+    Database* db = widget->database().data();
+    hardenDatabase(db);
+
+    const auto answer = QMessageBox::question(
+        getMainWindow(), tr("PmVault"),
+        tr("Protect this database with a second factor (TOTP)?\n\n"
+           "Scan a QR code with Google Authenticator and enter a 6-digit code on every unlock.\n"
+           "You can also enable this later from the PmVault menu."),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+
+    // The 2FA vault is keyed by a hash of the database path, so the new database
+    // must be saved to a stable location before enrollment.
+    if (db->filePath().isEmpty() && !widget->saveAs()) {
+        return;
+    }
+    if (db->filePath().isEmpty()) {
+        return;
+    }
+    enrollTwoFactor();
 }

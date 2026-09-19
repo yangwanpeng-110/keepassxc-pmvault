@@ -108,7 +108,19 @@ void PmpSyncEngine::start(Database* db, const Options& options)
 {
     m_db = db;
     m_options = options;
+
+    // Fail loudly (into the dialog log) instead of crashing if the TLS stack
+    // or this device's identity is unavailable.
+    if (!QSslSocket::supportsSsl()) {
+        fail(QObject::tr("TLS (OpenSSL) is not available in this build, so LAN sync cannot run."));
+        return;
+    }
+
     m_identity = PmpIdentityStore::loadOrCreate();
+    if (!m_identity.valid()) {
+        fail(QObject::tr("This device's TLS identity could not be created. Check the installation and retry."));
+        return;
+    }
     m_selfNode = m_identity.nodeId;
     m_dbId = PmpPlatform::dbId(db ? db->filePath() : QString());
 

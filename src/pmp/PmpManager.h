@@ -1,15 +1,16 @@
 /*
- * PmVault extensions - GUI wiring and lifecycle manager.
- *
- * Adds a "PmVault" menu to the main window and provides the second-factor gate
- * invoked from the database open flow. All dialogs are built in code (no .ui
- * files) to keep the fork self-contained.
+ * PmVault extensions - GUI integration manager.
+ * Owns the "PmVault" menu, 2FA enrollment, audit-log viewer, LAN sync dialog,
+ * database hardening (recycle-bin removal), the post-create 2FA offer, and
+ * helpers used by the global quick-access panel.
  */
 
 #ifndef PMP_MANAGER_H
 #define PMP_MANAGER_H
 
 #include <QObject>
+#include <QString>
+#include <QVector>
 
 class Database;
 class DatabaseWidget;
@@ -18,24 +19,47 @@ class QWidget;
 class PmpManager : public QObject
 {
     Q_OBJECT
+
 public:
     static PmpManager* instance();
-
-    // Call once after the main window exists.
     void install();
 
-    // Second-factor gate for the open-database flow. Returns true if 2FA is not
-    // enrolled or if the user passed verification; false to abort the unlock.
+    // Called by the open-database widget.
     static bool secondFactorGate(QWidget* parent, const QString& filePath);
-
-    // Bind (or refresh) the encrypted audit log to an opened database file.
     static void bindAudit(const QString& filePath);
 
-private slots:
-    void enrollTwoFactor();
+    struct QuickEntry
+    {
+        QString uuid;
+        QString title;
+        QString username;
+    };
+
+    // The recycle-bin feature is removed from the product. This forces it off
+    // and permanently removes any pre-existing recycle-bin group. It only marks
+    // the database modified when something actually changed, so already-hardened
+    // databases are not dirtied on every open.
+    static void hardenDatabase(Database* db);
+
+    // Helpers consumed by the global quick-access panel.
+    static QVector<QuickEntry> quickEntries();
+    static void quickCopy(const QString& uuid, bool password);
+    static void quickAutoType(const QString& uuid);
+    static bool hasUnlockedDatabase();
+    static void requestMainWindow();
+
+public slots:
     void removeTwoFactor();
     void showAuditLog();
     void showSync();
+    void openDatabaseSecurity();
+    void quickAccessSettings();
+
+    // Invoked right after the new-database wizard creates and adds a tab.
+    void onDatabaseCreated(DatabaseWidget* widget);
+
+private slots:
+    void enrollTwoFactor();
 
 private:
     explicit PmpManager(QObject* parent = nullptr);

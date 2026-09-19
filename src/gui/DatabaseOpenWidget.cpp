@@ -36,6 +36,16 @@
 #endif
 #ifdef Q_CC_MSVC
 #include "winhello/WindowsHello.h"
+#elif defined(Q_OS_WIN)
+// MinGW/GCC cannot compile the C++/WinRT upstream Windows Hello backend.
+// PmpHello provides the same operations through the system PowerShell + DPAPI.
+#include "pmp/PmpHello.h"
+#endif
+
+#if defined(Q_CC_MSVC)
+#define PM_HELLO() getWindowsHello()
+#elif defined(Q_OS_WIN)
+#define PM_HELLO() PmpHello::instance()
 #endif
 
 #include <QCheckBox>
@@ -49,14 +59,19 @@ namespace
 
     bool isQuickUnlockAvailable()
     {
+#if defined(Q_OS_WIN)
+        // PmVault: Windows Hello quick unlock (system PIN / fingerprint / face)
+        // is offered whenever the OS supports it, independent of the global
+        // Quick Unlock preference.
+        return PM_HELLO()->isAvailable();
+#else
         if (config()->get(Config::Security_QuickUnlock).toBool()) {
-#if defined(Q_CC_MSVC)
-            return getWindowsHello()->isAvailable();
-#elif defined(Q_OS_MACOS)
+#if defined(Q_OS_MACOS)
             return TouchID::getInstance().isAvailable();
 #endif
         }
         return false;
+#endif
     }
 } // namespace
 
@@ -403,12 +418,17 @@ void DatabaseOpenWidget::openDatabase()
             }
         }
 
+        // PmVault: the recycle-bin feature is removed; force the database to
+        // the hardened state before it is shown.
+        PmpManager::hardenDatabase(m_db.data());
+
         // Save Quick Unlock credentials if available
         if (!blockQuickUnlock && isQuickUnlockAvailable()) {
             auto keyData = databaseKey->serialize();
-#if defined(Q_CC_MSVC)
-            // Store the password using Windows Hello
-            if (!getWindowsHello()->storeKey(m_filename, keyData)) {
+#if defined(Q_OS_WIN)
+            // Store the serialized master key after a Windows Hello challenge
+            // (system PIN / fingerprint / face).
+            if (!PM_HELLO()->storeKey(m_filename, keyData)) {
                 getMainWindow()->displayTabMessage(
                     tr("Windows Hello setup was canceled or failed. Quick unlock has not been enabled."),
                     MessageWidget::MessageType::Warning);
@@ -478,10 +498,10 @@ QSharedPointer<CompositeKey> DatabaseOpenWidget::buildDatabaseKey()
     if (!m_db.isNull() && canPerformQuickUnlock()) {
         // try to retrieve the stored password using Windows Hello
         QByteArray keyData;
-#ifdef Q_CC_MSVC
-        if (!getWindowsHello()->getKey(m_filename, keyData)) {
+#if defined(Q_OS_WIN)
+        if (!PM_HELLO()->getKey(m_filename, keyData)) {
             // Failed to retrieve Quick Unlock data
-            auto error = getWindowsHello()->errorString();
+            const auto error = PM_HELLO()->errorString();
             if (!error.isEmpty()) {
                 m_ui->messageWidget->showMessage(tr("Failed to authenticate with Windows Hello: %1").arg(error),
                                                  MessageWidget::Error);
@@ -683,8 +703,8 @@ void DatabaseOpenWidget::setUserInteractionLock(bool state)
 bool DatabaseOpenWidget::canPerformQuickUnlock() const
 {
     if (!m_db.isNull() && isQuickUnlockAvailable()) {
-#if defined(Q_CC_MSVC)
-        return getWindowsHello()->hasKey(m_filename);
+#if defined(Q_OS_WIN)
+        return PM_HELLO()->hasKey(m_filename);
 #elif defined(Q_OS_MACOS)
         return TouchID::getInstance().containsKey(m_filename);
 #endif
@@ -728,8 +748,8 @@ void DatabaseOpenWidget::triggerQuickUnlock()
  */
 void DatabaseOpenWidget::resetQuickUnlock()
 {
-#if defined(Q_CC_MSVC)
-    getWindowsHello()->reset(m_filename);
+#if defined(Q_OS_WIN)
+    PM_HELLO()->reset(m_filename);
 #elif defined(Q_OS_MACOS)
     TouchID::getInstance().reset(m_filename);
 #endif
