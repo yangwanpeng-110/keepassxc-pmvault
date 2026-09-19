@@ -57,6 +57,9 @@ for r in ${PLUG_ROOTS}; do
     fi
 done
 log "Qt plugin root: ${QT_PLUGINS:-<none found>}"
+if [ -n "${QT_PLUGINS}" ]; then
+    log "Qt plugin subdirs: $(ls -1 "${QT_PLUGINS}" 2>/dev/null | tr '\n' ' ')"
+fi
 
 # ---------------------------------------------------------------------------
 # 3) windeployqt - best effort. Manual deployment below covers every failure.
@@ -134,14 +137,33 @@ if [ -f "${BUILD_DIR}/share/translations/keepassxc_zh_CN.qm" ]; then
 else
     log "WARNING: keepassxc_zh_CN.qm was not produced by the build; UI stays English"
 fi
-for qtroot in /mingw64/share/qt5/translations /mingw64/lib/qt5/translations \
+# Qt base translation localizes native dialogs and standard buttons
+# (Open/Save/Cancel/Yes/No...). Prefer qmake's reported translation dir, then
+# fall back to common MSYS2 layouts. Provided by the qt5-translations package.
+QT_TRANS_DIR=""
+for qb in qmake-qt5 qmake; do
+    if command -v "$qb" >/dev/null 2>&1; then
+        cand="$("$qb" -query QT_INSTALL_TRANSLATIONS 2>/dev/null)"
+        if [ -n "${cand}" ]; then
+            ucand="$(cygpath -u "${cand}" 2>/dev/null || true)"
+            [ -n "${ucand}" ] && [ -d "${ucand}" ] && cand="${ucand}"
+            [ -d "${cand}" ] && { QT_TRANS_DIR="${cand}"; break; }
+        fi
+    fi
+done
+log "Qt translations dir: ${QT_TRANS_DIR:-<none>}"
+got_qtbase=0
+for qtroot in ${QT_TRANS_DIR} /mingw64/share/qt5/translations /mingw64/lib/qt5/translations \
               /mingw64/translations /ucrt64/share/qt5/translations /clang64/share/qt5/translations; do
+    [ -z "${qtroot}" ] && continue
     if [ -f "${qtroot}/qtbase_zh_CN.qm" ]; then
         cp -f "${qtroot}/qtbase_zh_CN.qm" "${PKG_DIR}/share/translations/"
         log "translation: qtbase_zh_CN.qm <- ${qtroot}"
+        got_qtbase=1
         break
     fi
 done
+[ "${got_qtbase}" -eq 1 ] || log "WARNING: qtbase_zh_CN.qm not found (install mingw-w64-x86_64-qt5-translations)"
 [ "${copied_qm}" -eq 1 ] || log "WARNING: application Chinese translation is missing"
 
 if [ -d "${BUILD_DIR}/share/wordlists" ]; then
@@ -226,11 +248,27 @@ for must in keepassxc.exe keepassxc-cli.exe platforms/qwindows.dll; do
     fi
 done
 
-for soft in Qt5Core.dll Qt5Network.dll Qt5Widgets.dll share/translations/keepassxc_zh_CN.qm; do
+for soft in Qt5Core.dll Qt5Network.dll Qt5Widgets.dll \
+           share/translations/keepassxc_zh_CN.qm share/translations/qtbase_zh_CN.qm; do
     if ! ls "${PKG_DIR}/${soft}" >/dev/null 2>&1; then
         log "WARNING: expected file ${soft} is absent"
     fi
 done
+
+# TLS closure: either Qt ships loadable TLS backend plugins under tls/, or this
+# Qt build dlopens OpenSSL at runtime (no plugin, as on the MSYS2 Qt5 build), in
+# which case libssl + libcrypto must be bundled. Otherwise LAN mutual-TLS sync
+# would silently fail on a clean machine.
+tls_plugins="$(find "${PKG_DIR}/tls" -maxdepth 1 -name '*.dll' 2>/dev/null | wc -l | tr -d ' ')"
+have_openssl=0
+if ls "${PKG_DIR}/"libssl-*.dll >/dev/null 2>&1 && ls "${PKG_DIR}/"libcrypto-*.dll >/dev/null 2>&1; then
+    have_openssl=1
+fi
+log "TLS: backend plugins=${tls_plugins:-0}, bundled openssl=${have_openssl}"
+if [ "${tls_plugins:-0}" -eq 0 ] && [ "${have_openssl}" -eq 0 ]; then
+    echo "MISSING REQUIRED: neither a tls/ backend plugin nor libssl/libcrypto DLLs are present"
+    missing_hard=1
+fi
 
 if [ "${missing_hard}" -ne 0 ]; then
     echo "FATAL: one or more hard requirements are missing; not uploading a broken package."
