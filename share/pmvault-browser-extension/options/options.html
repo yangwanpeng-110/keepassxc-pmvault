@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>PmVault 浏览器桥接设置</title>
+    <style>
+      body {
+        font-family: -apple-system, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+        max-width: 760px;
+        margin: 32px auto;
+        padding: 0 20px;
+        color: #1a1b1c;
+        line-height: 1.6;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      .card {
+        border: 1px solid #e4e3dd;
+        border-radius: 10px;
+        padding: 16px 18px;
+        margin: 14px 0;
+      }
+      .status-ok {
+        color: #35705a;
+        font-weight: 700;
+      }
+      .status-warn {
+        color: #9a6a2f;
+        font-weight: 700;
+      }
+      .status-err {
+        color: #a14e50;
+        font-weight: 700;
+      }
+      button {
+        cursor: pointer;
+        border-radius: 6px;
+        border: 1px solid #4f6b9a;
+        background: #4f6b9a;
+        color: #fff;
+        padding: 8px 14px;
+        font-weight: 600;
+      }
+      code {
+        background: #f4f5f7;
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      ol {
+        padding-left: 22px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>PmVault 浏览器桥接</h1>
+
+    <div class="card">
+      <div>连接状态：<span id="status" class="status-warn">检测中…</span></div>
+      <div style="margin-top: 10px">
+        <button id="connect">连接并关联桌面端</button>
+      </div>
+      <div id="msg" style="margin-top: 8px; color: #5f6670"></div>
+    </div>
+
+    <div class="card">
+      <b>首次使用步骤</b>
+      <ol>
+        <li>运行 PmVault 桌面端，打开并解锁你的 KDBX 数据库。</li>
+        <li>在桌面端进入 <code>设置 → 浏览器集成（Browser Integration）</code>，勾选 <code>Chrome/Edge</code> 或启用“自定义浏览器配置/原生消息”。</li>
+        <li>安装本机原生消息主机：双击随扩展提供的 <code>host\install-host.bat</code>（右键以管理员身份运行，Chrome 与 Edge 都会注册）。脚本会把本扩展 ID 加入允许列表并指向 <code>keepassxc-proxy.exe</code>。</li>
+        <li>回到本页点击“连接并关联桌面端”，桌面端弹出确认框时选择允许/保存。</li>
+        <li>之后在网页密码框会出现 PmVault 悬浮条，可一键填充；提交登录后可选择保存。</li>
+      </ol>
+      <div>本扩展固定 ID：<code id="extid"></code></div>
+      <div style="color:#5f6670">填充与保存都通过本机原生消息管道（不走网络）；数据库锁定时桌面端会弹出解锁窗口，扩展本身不保存任何密码。</div>
+    </div>
+    <script src="options.js"></script>
+  </body>
+</html>

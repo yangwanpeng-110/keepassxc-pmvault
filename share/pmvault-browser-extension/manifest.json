@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "PmVault Browser Bridge",
+  "short_name": "PmVault",
+  "version": "1.0.0",
+  "description": "PmVault LAN password manager bridge: search/copy credentials, one-click fill, and save new logins via the local PmVault desktop app (KeePassXC-compatible native messaging, TLS-free localhost pipe).",
+  "minimum_chrome_version": "102",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA51VIptI/YCXVreNiIt/qybsEn/S1nicjZOXjyX+oymQ4EuPtQGwLUjwC+AXnuktW3vN/Xev1FKeUTkLdWaXN2grRKNChjJZV10EV+4gdehdFShh/2c24AJehpUXnI9kJtQRdFS4JtdQ4BVEiirOPLAWJ2ExgOdo67arRHMcPABQURuUTDhWSJPdLLT3BxkcVGNAB9KBpiQeh5W9wd1RDZcq9undIlbTyM3l/rtalnJWEF/BfC+MabLfQ93JttHr+OE6fAGMtQJv7xMLPGfRAe/SK/I7g41Tdc89Z/VJMtdPRgTS4hQeOFOAnvabevH5peSYR7wj23HLSfYyAUmoNPQIDAQAB",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "PmVault",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "classic"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "permissions": [
+    "nativeMessaging",
+    "storage",
+    "activeTab",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content/content.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
+}

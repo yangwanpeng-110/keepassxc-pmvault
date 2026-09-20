@@ -1,0 +1,136 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  width: 360px;
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+  font-size: 13px;
+  color: #1a1b1c;
+  background: #fff;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #ececf0;
+}
+.logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #4f6b9a;
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.title {
+  font-weight: 700;
+  flex: 1;
+}
+.status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.status-ok {
+  background: #e4f1ea;
+  color: #35705a;
+}
+.status-warn {
+  background: #f6ecdd;
+  color: #9a6a2f;
+}
+.status-err {
+  background: #f7e6e6;
+  color: #a14e50;
+}
+.searchrow {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px 4px;
+}
+#q {
+  flex: 1;
+  padding: 7px 9px;
+  border: 1px solid #d7dbe2;
+  border-radius: 6px;
+  font-size: 13px;
+}
+button {
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1px solid #d7dbe2;
+  background: #f2f4f8;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+button.primary {
+  background: #4f6b9a;
+  color: #fff;
+  border-color: #4f6b9a;
+}
+button.ghost {
+  background: #f2f4f8;
+}
+.hint {
+  padding: 0 12px 6px;
+  color: #8a8f99;
+  font-size: 11px;
+}
+.results {
+  max-height: 320px;
+  overflow: auto;
+  padding: 4px 8px 8px;
+}
+.entry {
+  border: 1px solid #ececf0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 6px 4px;
+}
+.entry .name {
+  font-weight: 700;
+  margin-bottom: 2px;
+  word-break: break-all;
+}
+.entry .login {
+  color: #5f6670;
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+.entry .actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.entry .actions button {
+  padding: 4px 8px;
+}
+.empty,
+.error {
+  padding: 14px 12px;
+  color: #5f6670;
+  text-align: center;
+  white-space: pre-wrap;
+}
+.error {
+  color: #a14e50;
+}
+footer {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid #ececf0;
+}
+footer button {
+  flex: 1;
+}

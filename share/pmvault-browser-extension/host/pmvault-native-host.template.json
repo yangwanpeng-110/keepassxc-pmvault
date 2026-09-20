@@ -1,0 +1,9 @@
+{
+  "name": "org.keepassxc.keepassxc_browser",
+  "description": "PmVault native messaging host (keepassxc-proxy)",
+  "path": "REPLACE_WITH_ABSOLUTE_PATH_TO_keepassxc-proxy.exe",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://efcjblaacddijgiakoocgkhdmihlgpfp/"
+  ]
+}
