@@ -13,6 +13,7 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QStringList>
+#include <QUrl>
 
 #include <algorithm>
 
@@ -80,17 +81,22 @@ bool PmpAuditLog::openRecord(const QByteArray& key, const QByteArray& frame, con
 
 QByteArray PmpAuditLog::encodePlain(const Record& r, const QString& id16, const QByteArray& prevAnchor)
 {
-    // Fixed, delimiter-separated, all-numeric/enumerated record. No free text.
-    return QString("v1|%1|%2|%3|%4|%5|%6|%7|%8")
-        .arg(r.seq)
-        .arg(r.ts)
-        .arg(r.event)
-        .arg(r.outcome)
-        .arg(r.field)
-        .arg(r.target)
-        .arg(id16)
-        .arg(QString::fromLatin1(prevAnchor.toHex()))
-        .toUtf8();
+    // Fixed, delimiter-separated, all-numeric/enumerated record. The only optional
+    // free-text field is the percent-encoded, sanitised network/TLS diagnostic.
+    QString line = QString("v1|%1|%2|%3|%4|%5|%6|%7|%8")
+                       .arg(r.seq)
+                       .arg(r.ts)
+                       .arg(r.event)
+                       .arg(r.outcome)
+                       .arg(r.field)
+                       .arg(r.target)
+                       .arg(id16)
+                       .arg(QString::fromLatin1(prevAnchor.toHex()));
+    if (!r.detail.isEmpty()) {
+        line += QLatin1Char('|');
+        line += QString::fromLatin1(QUrl::toPercentEncoding(QString::fromUtf8(r.detail)));
+    }
+    return line.toUtf8();
 }
 
 bool PmpAuditLog::decodePlain(const QByteArray& plain, Record& r, QString& id16, QByteArray& prevAnchor)
@@ -108,6 +114,9 @@ bool PmpAuditLog::decodePlain(const QByteArray& plain, Record& r, QString& id16,
     id16 = parts[7];
     r.dbId = id16;
     prevAnchor = QByteArray::fromHex(parts[8].toLatin1());
+    if (parts.size() >= 10) {
+        r.detail = QUrl::fromPercentEncoding(parts[9].toLatin1()).toUtf8();
+    }
     return true;
 }
 
@@ -291,6 +300,11 @@ void PmpAuditLog::rotateIfNeeded(const QString& id16, const QByteArray& lastLink
 
 void PmpAuditLog::record(Event event, Outcome outcome, Field field, Target target)
 {
+    record(event, outcome, field, target, QByteArray());
+}
+
+void PmpAuditLog::record(Event event, Outcome outcome, Field field, Target target, const QByteArray& detail)
+{
     QMutexLocker lock(&m_mutex);
     if (!m_loaded || m_currentId.isEmpty()) {
         return;
@@ -309,6 +323,24 @@ void PmpAuditLog::record(Event event, Outcome outcome, Field field, Target targe
     rec.field = field;
     rec.target = target;
     rec.dbId = m_currentId;
+
+    // Sanitise the optional diagnostic detail: strip control characters / the
+    // field delimiter, keep it bounded. Network/TLS diagnostics are the only
+    // permitted content by contract (see PmpSyncEngine).
+    if (!detail.isEmpty()) {
+        QByteArray clean;
+        clean.reserve(qMin(detail.size(), 600));
+        for (int i = 0; i < detail.size() && clean.size() < 600; ++i) {
+            const char ch = detail.at(i);
+            const unsigned char uc = static_cast<unsigned char>(ch);
+            if (uc < 0x20 || uc == 0x7f || ch == '|') {
+                clean.append(' ');
+            } else {
+                clean.append(ch);
+            }
+        }
+        rec.detail = clean;
+    }
 
     const QByteArray prevLink = m_lastLink;
     const QByteArray plain = encodePlain(rec, m_currentId, QByteArray());
@@ -337,7 +369,7 @@ PmpAuditLog::VerifyResult PmpAuditLog::verify(const QString& databaseFilePath) c
     const QString id16 = databaseFilePath.isEmpty() ? m_currentId : idFor(databaseFilePath);
     VerifyResult res;
     if (id16.isEmpty()) {
-        res.message = QObject::tr("No database bound to the audit log.");
+        res.message = QObject::tr("审计日志尚未绑定数据库。");
         return res;
     }
 
@@ -375,13 +407,13 @@ PmpAuditLog::VerifyResult PmpAuditLog::verify(const QString& databaseFilePath) c
     res.truncated = res.chainOk && !res.anchorOk;
 
     if (res.chainOk && res.anchorOk) {
-        res.message = QObject::tr("Audit chain intact: %n record(s).", nullptr, readable);
+        res.message = QObject::tr("审计链完整：共 %n 条记录。", nullptr, readable);
     } else if (!res.chainOk) {
-        res.message = QObject::tr("Tampering detected: chain breaks at record %1 of %2.")
+        res.message = QObject::tr("检测到篡改：链路在第 %1 / %2 条记录处断裂。")
                           .arg(readable + 1)
                           .arg(total);
     } else {
-        res.message = QObject::tr("Truncation detected: the log tail does not match the integrity anchor.");
+        res.message = QObject::tr("检测到截断：日志末尾与完整性锚点不一致。");
     }
     return res;
 }
@@ -427,37 +459,37 @@ QString PmpAuditLog::eventName(int e)
 {
     switch (e) {
     case EvUnlock:
-        return QObject::tr("Unlock");
+        return QObject::tr("解锁");
     case EvUnlockFailed:
-        return QObject::tr("Unlock failed");
+        return QObject::tr("解锁失败");
     case EvTwoFactor:
-        return QObject::tr("Second factor");
+        return QObject::tr("第二因素验证");
     case EvTwoFactorFailed:
-        return QObject::tr("Second factor failed");
+        return QObject::tr("第二因素失败");
     case EvTwoFactorEnroll:
-        return QObject::tr("Second factor enrolled");
+        return QObject::tr("启用第二因素");
     case EvTwoFactorUnenroll:
-        return QObject::tr("Second factor removed");
+        return QObject::tr("移除第二因素");
     case EvLock:
-        return QObject::tr("Lock");
+        return QObject::tr("锁定");
     case EvPasswordChange:
-        return QObject::tr("Password changed");
+        return QObject::tr("修改密码");
     case EvCopy:
-        return QObject::tr("Copy");
+        return QObject::tr("复制");
     case EvBrowserFill:
-        return QObject::tr("Browser DOM fill");
+        return QObject::tr("浏览器 DOM 填充");
     case EvAutoType:
-        return QObject::tr("Auto-Type");
+        return QObject::tr("自动键入");
     case EvSync:
-        return QObject::tr("LAN sync");
+        return QObject::tr("局域网同步");
     case EvSyncFailed:
-        return QObject::tr("LAN sync failed");
+        return QObject::tr("局域网同步失败");
     case EvConfigChange:
-        return QObject::tr("Configuration changed");
+        return QObject::tr("配置变更");
     case EvLogRotate:
-        return QObject::tr("Log rotated");
+        return QObject::tr("日志轮转");
     default:
-        return QObject::tr("Unknown");
+        return QObject::tr("未知");
     }
 }
 
@@ -465,13 +497,13 @@ QString PmpAuditLog::outcomeName(int o)
 {
     switch (o) {
     case OcSuccess:
-        return QObject::tr("Success");
+        return QObject::tr("成功");
     case OcFailure:
-        return QObject::tr("Failure");
+        return QObject::tr("失败");
     case OcDenied:
-        return QObject::tr("Denied");
+        return QObject::tr("拒绝");
     default:
-        return QObject::tr("Info");
+        return QObject::tr("信息");
     }
 }
 
@@ -479,17 +511,17 @@ QString PmpAuditLog::fieldName(int f)
 {
     switch (f) {
     case FldUsername:
-        return QObject::tr("username");
+        return QObject::tr("用户名");
     case FldPassword:
-        return QObject::tr("password");
+        return QObject::tr("密码");
     case FldTotp:
         return QObject::tr("TOTP");
     case FldUrl:
-        return QObject::tr("URL");
+        return QObject::tr("网址");
     case FldNotes:
-        return QObject::tr("notes");
+        return QObject::tr("备注");
     case FldOther:
-        return QObject::tr("other");
+        return QObject::tr("其他");
     default:
         return QString();
     }
@@ -499,13 +531,13 @@ QString PmpAuditLog::targetName(int t)
 {
     switch (t) {
     case TgtLocalDatabase:
-        return QObject::tr("local database");
+        return QObject::tr("本地数据库");
     case TgtBrowserDom:
-        return QObject::tr("browser DOM");
+        return QObject::tr("浏览器 DOM");
     case TgtDesktopWindow:
-        return QObject::tr("desktop window");
+        return QObject::tr("桌面窗口");
     case TgtLanPeer:
-        return QObject::tr("LAN peer");
+        return QObject::tr("局域网对端");
     default:
         return QString();
     }

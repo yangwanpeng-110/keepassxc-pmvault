@@ -836,7 +836,7 @@ void MainWindow::updateLastDatabasesMenu()
     m_ui->menuRecentDatabases->clear();
 
     // PmVault: full database manager (open / reveal / remove / delete).
-    QAction* manageAction = m_ui->menuRecentDatabases->addAction(tr("Manage databases…"));
+    QAction* manageAction = m_ui->menuRecentDatabases->addAction(tr("管理数据库…"));
     connect(manageAction, &QAction::triggered, m_ui->welcomeWidget, &WelcomeWidget::manageAllDatabases);
     m_ui->menuRecentDatabases->addSeparator();
 
@@ -1449,6 +1449,17 @@ void MainWindow::closeEvent(QCloseEvent* event)
     if (m_appExiting) {
         saveWindowInformation();
         event->accept();
+        // PmVault: explicitly destroy the tray icon and pump its hide/destroy
+        // messages BEFORE QApplication tears its widgets down. Leaving the
+        // QSystemTrayIcon alive until global destruction triggers the known
+        // Qt5/Windows QTrayIconMessageWindow null-dereference ("memory could not
+        // be read", offset 0x8) shown when closing the app.
+        if (m_trayIcon) {
+            m_trayIcon->hide();
+            delete m_trayIcon;
+            m_trayIcon = nullptr;
+            QCoreApplication::processEvents();
+        }
         m_restartRequested ? kpxcApp->restart() : QApplication::quit();
         return;
     }
@@ -1640,6 +1651,7 @@ void MainWindow::updateTrayIcon()
         if (m_trayIcon) {
             m_trayIcon->hide();
             delete m_trayIcon;
+            m_trayIcon = nullptr;
         }
     }
 

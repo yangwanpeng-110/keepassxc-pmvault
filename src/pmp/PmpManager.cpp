@@ -93,8 +93,8 @@ namespace
         dlg.setWindowTitle(title);
         auto* form = new QVBoxLayout(&dlg);
         auto* edit = new QLineEdit(&dlg);
-        setupCodeEdit(edit, QObject::tr("6-digit code"));
-        form->addWidget(new QLabel(QObject::tr("Enter the current code from your authenticator app:"), &dlg));
+        setupCodeEdit(edit, QObject::tr("6 位验证码"));
+        form->addWidget(new QLabel(QObject::tr("请输入验证器 App 中当前显示的 6 位验证码："), &dlg));
         form->addWidget(edit);
         auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
         form->addWidget(buttons);
@@ -163,6 +163,13 @@ void PmpManager::install()
     // Register the global quick-access hotkey.
     PmpQuickAccess::instance()->install();
 
+    // Tear down the global hotkey / native event filter while QApplication is
+    // still alive (the singleton outlives QApplication; leaking the filter into
+    // global destruction contributes to the Windows crash on exit).
+    connect(qApp, &QCoreApplication::aboutToQuit, this, []() {
+        PmpQuickAccess::instance()->shutdown();
+    });
+
     // Record lock events centrally.
     connect(mw, &MainWindow::databaseLocked, this, [](DatabaseWidget*) {
         PmpAuditLog::instance()->record(PmpAuditLog::EvLock, PmpAuditLog::OcInfo, PmpAuditLog::FldNone,
@@ -182,15 +189,10 @@ void PmpManager::ensureMenu()
     }
     auto* menu = mw->menuBar()->addMenu(QObject::tr("PmVault"));
     menu->setObjectName(kMenuObj);
-    QAction* manageAction = menu->addAction(QObject::tr("Manage databases…"));
-    connect(manageAction, &QAction::triggered, this, [mw]() {
-        if (QObject* welcome = mw->findChild<QObject*>("welcomeWidget")) {
-            QMetaObject::invokeMethod(welcome, "manageAllDatabases", Qt::QueuedConnection);
-        }
-    });
-    menu->addSeparator();
-    menu->addAction(QObject::tr("Enable Second Factor (TOTP)…"), this, &PmpManager::enrollTwoFactor);
-    menu->addAction(QObject::tr("Remove Second Factor…"), this, &PmpManager::removeTwoFactor);
+    // PmVault: database management lives only in the recent-databases history
+    // menu ("Manage databases…") to avoid duplicate entry points.
+    menu->addAction(QObject::tr("启用第二因素（TOTP）…"), this, &PmpManager::enrollTwoFactor);
+    menu->addAction(QObject::tr("移除第二因素…"), this, &PmpManager::removeTwoFactor);
     menu->addSeparator();
     // The password generator reuses the toolbar's checkable page-switch action
     // so menu and toolbar always drive the same stacked-widget page.
@@ -198,8 +200,8 @@ void PmpManager::ensureMenu()
         menu->addAction(genAction);
     }
     menu->addSeparator();
-    menu->addAction(QObject::tr("View Audit Log…"), this, &PmpManager::showAuditLog);
-    menu->addAction(QObject::tr("LAN Sync…"), this, &PmpManager::showSync);
+    menu->addAction(QObject::tr("查看审计日志…"), this, &PmpManager::showAuditLog);
+    menu->addAction(QObject::tr("局域网同步…"), this, &PmpManager::showSync);
 }
 
 bool PmpManager::eventFilter(QObject* watched, QEvent* event)
@@ -225,7 +227,7 @@ bool PmpManager::secondFactorGate(QWidget* parent, const QString& filePath)
                                     PmpAuditLog::TgtLocalDatabase);
 
     for (int attempt = 0; attempt < 6; ++attempt) {
-        const QString code = promptCode(parent, QObject::tr("Second Factor Required"));
+        const QString code = promptCode(parent, QObject::tr("需要第二因素"));
         if (code.isEmpty()) {
             PmpAuditLog::instance()->record(PmpAuditLog::EvUnlock, PmpAuditLog::OcDenied, PmpAuditLog::FldNone,
                                             PmpAuditLog::TgtLocalDatabase);
@@ -239,13 +241,13 @@ bool PmpManager::secondFactorGate(QWidget* parent, const QString& filePath)
         if (r == PmpTwoFactor::Locked) {
             const qint64 secs = tf->lockedSecondsRemaining(filePath);
             QMessageBox::warning(
-                parent, QObject::tr("Second Factor Locked"),
-                QObject::tr("Too many failed attempts. Try again in %1 seconds.").arg(secs));
+                parent, QObject::tr("第二因素已锁定"),
+                QObject::tr("失败次数过多，请在 %1 秒后再试。").arg(secs));
             // Stay in the loop; verification keeps rejecting until the window passes.
             continue;
         }
-        QMessageBox::warning(parent, QObject::tr("Verification Failed"),
-                             error.isEmpty() ? QObject::tr("The code was incorrect.") : error);
+        QMessageBox::warning(parent, QObject::tr("验证失败"),
+                             error.isEmpty() ? QObject::tr("验证码不正确。") : error);
     }
     PmpAuditLog::instance()->record(PmpAuditLog::EvUnlock, PmpAuditLog::OcDenied, PmpAuditLog::FldNone,
                                     PmpAuditLog::TgtLocalDatabase);
@@ -265,13 +267,13 @@ void PmpManager::enrollTwoFactor()
     DatabaseWidget* w = nullptr;
     Database* db = currentDatabase(&w);
     if (!db) {
-        QMessageBox::information(nullptr, tr("PmVault"), tr("Open a database first."));
+        QMessageBox::information(nullptr, tr("PmVault"), tr("请先打开一个数据库。"));
         return;
     }
     const QString path = db->filePath();
     PmpTwoFactor* tf = PmpTwoFactor::instance();
     if (tf->isEnrolled(path)) {
-        QMessageBox::information(nullptr, tr("PmVault"), tr("A second factor is already enrolled for this database on this device."));
+        QMessageBox::information(nullptr, tr("PmVault"), tr("本设备上已为该数据库启用第二因素。"));
         return;
     }
 
@@ -279,12 +281,12 @@ void PmpManager::enrollTwoFactor()
     const PmpTwoFactor::EnrollStart start = tf->beginEnroll(path, label);
 
     QDialog dlg;
-    dlg.setWindowTitle(tr("Enable Second Factor (TOTP)"));
+    dlg.setWindowTitle(tr("启用第二因素（TOTP）"));
     auto* root = new QVBoxLayout(&dlg);
     root->addWidget(new QLabel(
-        tr("1. Scan the QR code with Google Authenticator (or any TOTP app) to add PmVault.\n"
-           "PmVault never reads the authenticator app or the code shown on it; you only type the "
-           "6-digit code below to confirm."),
+        tr("1. 使用 Google 验证器（或任意 TOTP App）扫描二维码以添加 PmVault。\n"
+           "PmVault 不会读取验证器 App 或其上显示的验证码，您只需在下方手动输入 "
+           "6 位验证码进行确认。"),
         &dlg));
 
     const QrCode qr(start.otpauthUri);
@@ -301,9 +303,9 @@ void PmpManager::enrollTwoFactor()
     qrRow->addStretch(1);
     root->addLayout(qrRow);
 
-    root->addWidget(new QLabel(tr("2. Enter the current 6-digit code to confirm:"), &dlg));
+    root->addWidget(new QLabel(tr("2. 输入当前的 6 位验证码以确认："), &dlg));
     auto* codeEdit = new QLineEdit(&dlg);
-    setupCodeEdit(codeEdit, tr("6-digit code"));
+    setupCodeEdit(codeEdit, tr("6 位验证码"));
     root->addWidget(codeEdit);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
@@ -316,8 +318,8 @@ void PmpManager::enrollTwoFactor()
     }
     QString error;
     if (!isSixDigits(codeEdit->text()) || !tf->confirmEnroll(path, codeEdit->text(), error)) {
-        QMessageBox::critical(nullptr, tr("Enrollment Failed"),
-                              error.isEmpty() ? tr("The confirmation code did not match.") : error);
+        QMessageBox::critical(nullptr, tr("启用失败"),
+                              error.isEmpty() ? tr("确认验证码不匹配。") : error);
         return;
     }
     PmpConfig::setValue(db, PmpConfig::Key::TwoFactorEnabled, QStringLiteral("true"));
@@ -326,31 +328,31 @@ void PmpManager::enrollTwoFactor()
         w->save();
     }
     QMessageBox::information(nullptr, tr("PmVault"),
-                             tr("Second factor enabled on this device.\n"
-                                "The seed is stored only in this device's encrypted vault, not in the database."));
+                             tr("已在本设备启用第二因素。\n"
+                                "种子仅保存在本设备的加密保险库中，不存入数据库。"));
 }
 
 void PmpManager::removeTwoFactor()
 {
     Database* db = currentDatabase();
     if (!db) {
-        QMessageBox::information(nullptr, tr("PmVault"), tr("Open a database first."));
+        QMessageBox::information(nullptr, tr("PmVault"), tr("请先打开一个数据库。"));
         return;
     }
     const QString path = db->filePath();
     PmpTwoFactor* tf = PmpTwoFactor::instance();
     if (!tf->isEnrolled(path)) {
-        QMessageBox::information(nullptr, tr("PmVault"), tr("No second factor is enrolled on this device."));
+        QMessageBox::information(nullptr, tr("PmVault"), tr("本设备上没有为该数据库启用第二因素。"));
         return;
     }
-    const QString code = promptCode(nullptr, tr("Remove Second Factor"));
+    const QString code = promptCode(nullptr, tr("移除第二因素"));
     if (code.isEmpty()) {
         return;
     }
     QString error;
     if (tf->verifyInteractive(path, code, error) != PmpTwoFactor::Ok) {
         QMessageBox::warning(nullptr, tr("PmVault"),
-                             error.isEmpty() ? tr("Verification failed.") : error);
+                             error.isEmpty() ? tr("验证失败。") : error);
         return;
     }
     tf->removeEnrollment(path);
@@ -358,7 +360,7 @@ void PmpManager::removeTwoFactor()
     PmpAuditLog::instance()->record(PmpAuditLog::EvTwoFactorUnenroll, PmpAuditLog::OcSuccess,
                                     PmpAuditLog::FldNone, PmpAuditLog::TgtLocalDatabase);
     db->markAsModified();
-    QMessageBox::information(nullptr, tr("PmVault"), tr("Second factor removed on this device."));
+    QMessageBox::information(nullptr, tr("PmVault"), tr("已在本设备移除第二因素。"));
 }
 
 void PmpManager::showAuditLog()
@@ -366,7 +368,7 @@ void PmpManager::showAuditLog()
     Database* db = currentDatabase();
     const QString path = db ? db->filePath() : QString();
     if (path.isEmpty()) {
-        QMessageBox::information(nullptr, tr("PmVault"), tr("Open a database first."));
+        QMessageBox::information(nullptr, tr("PmVault"), tr("请先打开一个数据库。"));
         return;
     }
 
@@ -374,25 +376,26 @@ void PmpManager::showAuditLog()
     const QVector<PmpAuditLog::Record> records = PmpAuditLog::instance()->readAll(path, 5000);
 
     QDialog dlg;
-    dlg.setWindowTitle(tr("PmVault Audit Log"));
-    dlg.resize(720, 520);
+    dlg.setWindowTitle(tr("PmVault 审计日志"));
+    dlg.resize(900, 560);
     auto* root = new QVBoxLayout(&dlg);
 
     const QString statusColor = (vr.chainOk && vr.anchorOk && !vr.truncated) ? QStringLiteral("#35705A")
                                                                             : QStringLiteral("#A14E50");
     auto* status = new QLabel(&dlg);
     status->setStyleSheet(QStringLiteral("color:%1; font-weight:bold;").arg(statusColor));
-    status->setText(tr("Integrity: chain=%1 anchor=%2 truncated=%3  ·  %4 readable records, last seq %5\n%6")
-                        .arg(vr.chainOk ? tr("OK") : tr("BROKEN"),
-                             vr.anchorOk ? tr("OK") : tr("BROKEN"),
-                             vr.truncated ? tr("YES") : tr("no"))
+    status->setText(tr("完整性：链路=%1 锚点=%2 截断=%3  ·  可读记录 %4 条，末序号 %5\n%6")
+                        .arg(vr.chainOk ? tr("正常") : tr("损坏"),
+                             vr.anchorOk ? tr("正常") : tr("损坏"),
+                             vr.truncated ? tr("是") : tr("否"))
                         .arg(vr.readableCount)
                         .arg(vr.lastSeq)
                         .arg(vr.message));
     root->addWidget(status);
 
-    auto* table = new QTableWidget(static_cast<int>(records.size()), 5, &dlg);
-    table->setHorizontalHeaderLabels({tr("Time (UTC)"), tr("Event"), tr("Outcome"), tr("Field"), tr("Target")});
+    auto* table = new QTableWidget(static_cast<int>(records.size()), 6, &dlg);
+    table->setHorizontalHeaderLabels({tr("时间（UTC）"), tr("事件"), tr("结果"), tr("字段"),
+                                      tr("对象"), tr("详情（网络/TLS 诊断）")});
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     int row = 0;
@@ -401,7 +404,8 @@ void PmpManager::showAuditLog()
         const QString t = QDateTime::fromMSecsSinceEpoch(static_cast<qint64>(r.ts)).toUTC().toString(Qt::ISODate);
         const QList<QString> cells = {
             t, PmpAuditLog::eventName(r.event), PmpAuditLog::outcomeName(r.outcome),
-            PmpAuditLog::fieldName(r.field), PmpAuditLog::targetName(r.target)};
+            PmpAuditLog::fieldName(r.field), PmpAuditLog::targetName(r.target),
+            QString::fromUtf8(r.detail)};
         for (int c = 0; c < cells.size(); ++c) {
             table->setItem(row, c, new QTableWidgetItem(cells[c]));
         }
@@ -412,6 +416,7 @@ void PmpManager::showAuditLog()
     root->addWidget(table);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
+    buttons->button(QDialogButtonBox::Close)->setText(tr("关闭"));
     root->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
     connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
@@ -423,7 +428,7 @@ void PmpManager::showSync()
     DatabaseWidget* w = nullptr;
     Database* db = currentDatabase(&w);
     if (!db) {
-        QMessageBox::information(nullptr, tr("PmVault"), tr("Open a database first."));
+        QMessageBox::information(nullptr, tr("PmVault"), tr("请先打开一个数据库。"));
         return;
     }
 
@@ -431,45 +436,45 @@ void PmpManager::showSync()
     // dialog. Identity generation is exception-safe, but this also gives a clear
     // error instead of a crash if anything is unavailable.
     if (!QSslSocket::supportsSsl()) {
-        QMessageBox::critical(nullptr, tr("PmVault LAN Sync (TLS 1.3)"),
-                              tr("TLS (OpenSSL) is not available in this build, so LAN sync cannot run."));
+        QMessageBox::critical(nullptr, tr("PmVault 局域网同步（TLS 1.3）"),
+                              tr("本构建未提供 TLS（OpenSSL），无法进行局域网同步。"));
         return;
     }
     const PmpIdentity identity = PmpIdentityStore::loadOrCreate();
     if (!identity.valid()) {
-        QMessageBox::critical(nullptr, tr("PmVault LAN Sync (TLS 1.3)"),
-                              tr("This device's TLS identity could not be created. Check the installation and retry."));
+        QMessageBox::critical(nullptr, tr("PmVault 局域网同步（TLS 1.3）"),
+                              tr("无法创建本机 TLS 身份，请检查安装后重试。"));
         return;
     }
 
     QDialog dlg;
-    dlg.setWindowTitle(tr("PmVault LAN Sync (TLS 1.3)"));
-    dlg.resize(560, 420);
+    dlg.setWindowTitle(tr("PmVault 局域网同步（TLS 1.3）"));
+    dlg.resize(600, 460);
     auto* root = new QVBoxLayout(&dlg);
 
     auto* mode = new QComboBox(&dlg);
-    mode->addItem(tr("Listen for an incoming peer (single, 60 s)"));
-    mode->addItem(tr("Connect to a peer"));
+    mode->addItem(tr("监听并等待对端连接（单次，60 秒）"));
+    mode->addItem(tr("主动连接对端"));
     root->addWidget(mode);
 
     auto* form = new QFormLayout();
     auto* hostEdit = new QLineEdit(&dlg);
-    hostEdit->setPlaceholderText(tr("peer LAN IP, e.g. 192.168.1.20"));
+    hostEdit->setPlaceholderText(tr("对端局域网 IP，例如 192.168.1.20"));
     auto* portSpin = new QSpinBox(&dlg);
     portSpin->setRange(1024, 65535);
     portSpin->setValue(PmpConfig::getInt(db, PmpConfig::Key::SyncPort) > 0
                            ? PmpConfig::getInt(db, PmpConfig::Key::SyncPort)
                            : 19532);
     auto* policy = new QComboBox(&dlg);
-    policy->addItem(tr("Keep both on conflict (recommended)"));
-    policy->addItem(tr("Delete wins on delete/edit conflict"));
-    form->addRow(tr("Peer host:"), hostEdit);
-    form->addRow(tr("Port:"), portSpin);
-    form->addRow(tr("Conflict policy:"), policy);
+    policy->addItem(tr("冲突时双方都保留（推荐）"));
+    policy->addItem(tr("删除/编辑冲突时以删除为准"));
+    form->addRow(tr("对端地址："), hostEdit);
+    form->addRow(tr("端口："), portSpin);
+    form->addRow(tr("冲突策略："), policy);
     root->addLayout(form);
 
     auto* nodeLabel = new QLabel(&dlg);
-    nodeLabel->setText(tr("This device node: %1").arg(identity.nodeId));
+    nodeLabel->setText(tr("本机节点：%1").arg(identity.nodeId));
     nodeLabel->setWordWrap(true);
     root->addWidget(nodeLabel);
 
@@ -493,11 +498,18 @@ void PmpManager::showSync()
     ipLabel->setWordWrap(true);
     ipLabel->setStyleSheet(QStringLiteral("color:#35537a;"));
     ipLabel->setText(addrs.isEmpty()
-                         ? tr("No active LAN IPv4 address found. Connect to a network first.")
-                         : tr("This PC's LAN address(es): %1").arg(addrs.join(", ")));
+                         ? tr("未检测到活动的局域网 IPv4 地址，请先连接网络。")
+                         : tr("本机局域网地址：%1").arg(addrs.join(", ")));
     root->addWidget(ipLabel);
 
-    auto* startBtn = new QPushButton(tr("Start"), &dlg);
+    auto* hintLabel = new QLabel(&dlg);
+    hintLabel->setWordWrap(true);
+    hintLabel->setStyleSheet(QStringLiteral("color:#9A6A2F;"));
+    hintLabel->setText(tr("提示：两端需在同一 Wi‑Fi/局域网；若连接失败，请关闭代理/VPN 的 TUN 或局域网"
+                          "劫持，并在 Windows 防火墙允许本程序入站 TCP %1 端口。").arg(portSpin->value()));
+    root->addWidget(hintLabel);
+
+    auto* startBtn = new QPushButton(tr("开始"), &dlg);
     root->addWidget(startBtn);
 
     auto* log = new QPlainTextEdit(&dlg);
@@ -505,17 +517,22 @@ void PmpManager::showSync()
     root->addWidget(log);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
+    buttons->button(QDialogButtonBox::Close)->setText(tr("关闭"));
     root->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
 
     connect(mode, QOverload<int>::of(&QComboBox::currentIndexChanged), hostEdit, [mode, hostEdit]() {
         hostEdit->setEnabled(mode->currentIndex() == 1);
     });
+    connect(portSpin, QOverload<int>::of(&QSpinBox::valueChanged), hintLabel, [hintLabel, portSpin]() {
+        hintLabel->setText(QObject::tr("提示：两端需在同一 Wi‑Fi/局域网；若连接失败，请关闭代理/VPN 的 TUN 或局域网"
+                                       "劫持，并在 Windows 防火墙允许本程序入站 TCP %1 端口。").arg(portSpin->value()));
+    });
     hostEdit->setEnabled(false);
 
     connect(startBtn, &QPushButton::clicked, &dlg, [&]() {
         startBtn->setEnabled(false);
-        log->appendPlainText(tr("Starting…"));
+        log->appendPlainText(tr("正在启动…"));
 
         auto* sync = new PmpSyncEngine(&dlg);
         PmpSyncEngine::Options opt;
@@ -528,24 +545,28 @@ void PmpManager::showSync()
         }
         opt.confirmPeer = [&](const QString& fingerprint, const QString& peer) {
             const QString msg =
-                tr("Unknown peer certificate.\n\nFingerprint (SHA-256):\n%1\n\nTrust this device for this database?")
+                tr("未知的对端证书。\n\n指纹（SHA-256）：\n%1\n\n是否在本数据库中信任该设备？")
                     .arg(fingerprint);
             Q_UNUSED(peer);
-            return QMessageBox::question(&dlg, tr("Trust Peer?"), msg, QMessageBox::Yes | QMessageBox::No)
-                   == QMessageBox::Yes;
+            auto* box = new QMessageBox(QMessageBox::Question, tr("是否信任对端？"), msg,
+                                        QMessageBox::Yes | QMessageBox::No, &dlg);
+            box->button(QMessageBox::Yes)->setText(tr("信任"));
+            box->button(QMessageBox::No)->setText(tr("不信任"));
+            const int chosen = box->exec();
+            return chosen == QMessageBox::Yes;
         };
 
         connect(sync, &PmpSyncEngine::logMessage, log, &QPlainTextEdit::appendPlainText);
         connect(sync, &PmpSyncEngine::finished, &dlg, [&, startBtn](const PmpSyncEngine::Report& r) {
             startBtn->setEnabled(true);
             if (r.ok) {
-                log->appendPlainText(tr("DONE: %1  (updated %2, deleted %3, conflict copies %4)")
+                log->appendPlainText(tr("完成：%1（更新 %2，删除 %3，冲突副本 %4）")
                                          .arg(r.message)
                                          .arg(r.upserted)
                                          .arg(r.deleted)
                                          .arg(r.conflictCopies));
             } else {
-                log->appendPlainText(tr("FAILED: %1").arg(r.message));
+                log->appendPlainText(tr("失败：%1").arg(r.message));
             }
             sender()->deleteLater();
         });
@@ -598,7 +619,7 @@ QVector<PmpManager::QuickEntry> PmpManager::quickEntries()
         item.title = entry->title();
         item.username = entry->username();
         if (item.title.isEmpty()) {
-            item.title = QObject::tr("(untitled)");
+            item.title = QObject::tr("（未命名）");
         }
         result.append(item);
     }
@@ -680,7 +701,7 @@ void PmpManager::openDatabaseSecurity()
 {
     DatabaseWidget* widget = nullptr;
     if (!currentDatabase(&widget) || !widget) {
-        QMessageBox::information(nullptr, tr("PmVault"), tr("Open a database first."));
+        QMessageBox::information(nullptr, tr("PmVault"), tr("请先打开一个数据库。"));
         return;
     }
     widget->switchToDatabaseSecurity();
@@ -702,9 +723,9 @@ void PmpManager::onDatabaseCreated(DatabaseWidget* widget)
 
     const auto answer = QMessageBox::question(
         getMainWindow(), tr("PmVault"),
-        tr("Protect this database with a second factor (TOTP)?\n\n"
-           "Scan a QR code with Google Authenticator and enter a 6-digit code on every unlock.\n"
-           "You can also enable this later from the PmVault menu."),
+        tr("是否为该数据库启用第二因素（TOTP）？\n\n"
+           "用 Google 验证器扫描二维码，之后每次解锁都需输入 6 位验证码。\n"
+           "您也可以稍后在 PmVault 菜单中启用。"),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     if (answer != QMessageBox::Yes) {
         return;

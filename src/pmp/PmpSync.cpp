@@ -110,6 +110,27 @@ PmpSyncEngine::PmpSyncEngine(QObject* parent)
 {
 }
 
+void PmpSyncEngine::note(const QString& text)
+{
+    emit logMessage(text);
+    if (m_trace.size() > 2400) {
+        m_trace.remove(0, m_trace.size() - 2000);
+    }
+    m_trace += text;
+    m_trace += QLatin1Char('\n');
+}
+
+QString PmpSyncEngine::traceTail(int max) const
+{
+    QString s = m_trace;
+    s.replace(QLatin1Char('\n'), QStringLiteral("; "));
+    s = s.trimmed();
+    if (s.size() > max) {
+        s = s.right(max);
+    }
+    return s;
+}
+
 bool PmpSyncEngine::isLanAddress(const QHostAddress& addr)
 {
     if (addr.isLoopback() || addr.isLinkLocal()) {
@@ -137,17 +158,21 @@ void PmpSyncEngine::start(Database* db, const Options& options)
     // Fail loudly (into the dialog log) instead of crashing if the TLS stack
     // or this device's identity is unavailable.
     if (!QSslSocket::supportsSsl()) {
-        fail(QObject::tr("TLS (OpenSSL) is not available in this build, so LAN sync cannot run."));
+        fail(QObject::tr("本构建未提供 TLS（OpenSSL），无法进行局域网同步。"));
         return;
     }
 
     m_identity = PmpIdentityStore::loadOrCreate();
     if (!m_identity.valid()) {
-        fail(QObject::tr("This device's TLS identity could not be created. Check the installation and retry."));
+        fail(QObject::tr("无法创建本机 TLS 身份，请检查安装后重试。"));
         return;
     }
     m_selfNode = m_identity.nodeId;
     m_dbId = PmpPlatform::dbId(db ? db->filePath() : QString());
+
+    note(QObject::tr("OpenSSL 版本：%1；编译期 SSL 版本：%2")
+             .arg(QSslSocket::sslLibraryVersionString(),
+                  QString::fromLatin1(QSslSocket::sslLibraryBuildVersionString())));
 
     m_timer = new QTimer(this);
     m_timer->setSingleShot(true);
@@ -157,28 +182,56 @@ void PmpSyncEngine::start(Database* db, const Options& options)
     const QStringList localAddrs = localIpv4List();
 
     if (options.listen) {
-        emit logMessage(QObject::tr("Listening for a single LAN peer on port %1 (60 s)…").arg(options.port));
+        note(QObject::tr("正在端口 %1 监听单个局域网对端（60 秒）…").arg(options.port));
         auto* server = new PmpSslServer(this);
         server->setupSocket = [this](QSslSocket* s) { configureSocket(s); };
         connect(server, &QTcpServer::newConnection, this, &PmpSyncEngine::onNewConnection);
         if (!server->listen(QHostAddress::Any, static_cast<quint16>(options.port))) {
-            fail(QObject::tr("Could not listen on port %1: %2").arg(options.port).arg(server->errorString()));
+            fail(QObject::tr("无法在端口 %1 监听：%2").arg(options.port).arg(server->errorString()));
             return;
         }
         m_server = server;
         if (localAddrs.isEmpty()) {
-            emit logMessage(QObject::tr("No active LAN IPv4 address was found; connect this device to a network first."));
+            note(QObject::tr("未检测到活动的局域网 IPv4 地址，请先连接网络。"));
         } else {
-            emit logMessage(QObject::tr("This device's LAN address(es): %1").arg(localAddrs.join(", ")));
+            note(QObject::tr("本机局域网地址：%1").arg(localAddrs.join(", ")));
         }
-        emit logMessage(QObject::tr("On the other device choose \"Connect to a peer\" and enter one of these addresses."));
+        note(QObject::tr("请在另一台设备选择“主动连接对端”，并输入上述地址之一。"));
     } else {
-        emit logMessage(QObject::tr("Connecting to %1:%2 over TLS 1.3…").arg(options.host).arg(options.port));
+        note(QObject::tr("正在通过 TLS 1.3 连接 %1:%2 …").arg(options.host).arg(options.port));
         if (!localAddrs.isEmpty()) {
-            emit logMessage(QObject::tr("This device's LAN address(es): %1").arg(localAddrs.join(", ")));
+            note(QObject::tr("本机局域网地址：%1").arg(localAddrs.join(", ")));
         }
         auto* socket = new QSslSocket(this);
         configureSocket(socket);
+        // Stage logging distinguishes a TCP failure (firewall / wrong IP / AP
+        // isolation) from a TLS-handshake failure (certificate / protocol).
+        connect(socket, &QAbstractSocket::stateChanged, this,
+                [this](QAbstractSocket::SocketState state) {
+                    QString name;
+                    switch (state) {
+                    case QAbstractSocket::HostLookupState:
+                        name = QObject::tr("正在解析主机名");
+                        break;
+                    case QAbstractSocket::ConnectingState:
+                        name = QObject::tr("正在建立 TCP 连接");
+                        break;
+                    case QAbstractSocket::ConnectedState:
+                        name = QObject::tr("TCP 已连接");
+                        break;
+                    case QAbstractSocket::EncryptedState:
+                        name = QObject::tr("TLS 已加密");
+                        break;
+                    case QAbstractSocket::UnconnectedState:
+                        name = QObject::tr("连接已断开");
+                        break;
+                    default:
+                        break;
+                    }
+                    if (!name.isEmpty()) {
+                        note(QObject::tr("阶段：%1").arg(name));
+                    }
+                });
         m_socket = socket;
         socket->connectToHostEncrypted(options.host, static_cast<quint16>(options.port));
     }
@@ -215,7 +268,7 @@ void PmpSyncEngine::configureSocket(QSslSocket* socket)
             &PmpSyncEngine::onSocketError);
     connect(socket, &QSslSocket::disconnected, this, [this]() {
         if (!m_done && m_applied) {
-            finishOk(QObject::tr("Sync completed; peer disconnected."));
+            finishOk(QObject::tr("同步完成，对端已断开。"));
         }
     });
 }
@@ -228,10 +281,12 @@ void PmpSyncEngine::onNewConnection()
     m_server->pauseAccepting(); // single connection only
     m_socket = qobject_cast<QSslSocket*>(m_server->nextPendingConnection());
     if (!m_socket) {
-        fail(QObject::tr("Incoming connection was not a TLS socket."));
+        fail(QObject::tr("入站连接不是 TLS 套接字。"));
         return;
     }
-    emit logMessage(QObject::tr("Peer connected from %1").arg(m_socket->peerAddress().toString()));
+    note(QObject::tr("对端从 %1:%2 建立 TCP 连接，等待 TLS 1.3 握手…")
+             .arg(m_socket->peerAddress().toString())
+             .arg(m_socket->peerPort()));
 }
 
 void PmpSyncEngine::onSslErrors(const QList<QSslError>& errors)
@@ -241,12 +296,12 @@ void PmpSyncEngine::onSslErrors(const QList<QSslError>& errors)
         return;
     }
     for (const QSslError& e : errors) {
-        emit logMessage(QObject::tr("TLS: %1").arg(e.errorString()));
+        note(QObject::tr("TLS 提示（自签名证书属正常）：%1").arg(e.errorString()));
     }
     const QSslCertificate peer = socket->peerCertificate();
     if (peer.isNull()) {
         // Mutual TLS: a peer without a certificate is never acceptable.
-        fail(QObject::tr("Peer presented no certificate; mutual TLS required."));
+        fail(QObject::tr("对端未提供证书；双向 TLS 要求双方都出示证书。"));
         socket->abort();
         return;
     }
@@ -264,7 +319,7 @@ void PmpSyncEngine::onSslErrors(const QList<QSslError>& errors)
         socket->ignoreSslErrors(errors);
     } else {
         socket->abort();
-        fail(QObject::tr("Peer certificate fingerprint not trusted:\n%1").arg(fp));
+        fail(QObject::tr("对端证书指纹未被信任：\n%1").arg(fp));
     }
 }
 
@@ -276,22 +331,24 @@ void PmpSyncEngine::onEncrypted()
     }
     const QSslCertificate peer = socket->peerCertificate();
     if (peer.isNull()) {
-        fail(QObject::tr("Mutual TLS failed: no peer certificate."));
+        fail(QObject::tr("双向 TLS 失败：对端没有证书。"));
         return;
     }
     if (!isLanAddress(socket->peerAddress())) {
-        fail(QObject::tr("Peer address %1 is not on the local network.").arg(socket->peerAddress().toString()));
+        fail(QObject::tr("对端地址 %1 不在局域网内，已拒绝。").arg(socket->peerAddress().toString()));
         return;
     }
 #if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
     if (socket->sessionCipher().protocol() != QSsl::TlsV1_3) {
-        fail(QObject::tr("Negotiated protocol is not TLS 1.3; aborting."));
+        fail(QObject::tr("协商结果不是 TLS 1.3（实际：%1），已中止。")
+                 .arg(socket->sessionCipher().protocolString()));
         return;
     }
 #endif
     m_peerFingerprint = QString::fromLatin1(peer.digest(QCryptographicHash::Sha256).toHex()).toLower();
     m_peerNode = m_peerFingerprint.left(16);
-    emit logMessage(QObject::tr("TLS 1.3 secured with peer %1").arg(m_peerNode));
+    note(QObject::tr("已与对端 %1 建立 TLS 1.3 加密通道（%2）")
+             .arg(m_peerNode, socket->sessionCipher().name()));
 
     // Build the local state lazily and send HELLO + MANIFEST once.
     if (m_local.live.isEmpty()) {
@@ -304,30 +361,37 @@ void PmpSyncEngine::onSocketError()
 {
     auto* socket = qobject_cast<QSslSocket*>(sender());
     if (socket && !m_done) {
-        QString detail = socket->errorString();
+        const QString peer = socket->peerAddress().isNull()
+                                 ? m_options.host
+                                 : QStringLiteral("%1:%2").arg(socket->peerAddress().toString()).arg(socket->peerPort());
+        QString detail = QObject::tr("套接字错误（%1）：%2；对端 %3，本机 %4")
+                             .arg(QString::number(static_cast<int>(socket->error())),
+                                  socket->errorString(),
+                                  peer.isEmpty() ? QStringLiteral("?") : peer,
+                                  QStringLiteral("%1:%2").arg(socket->localAddress().toString()).arg(socket->localPort()));
         switch (socket->error()) {
         case QAbstractSocket::ConnectionRefusedError:
-            detail += QObject::tr("\nHint: nothing is listening on that address/port, or the Windows Firewall "
-                                  "blocked the inbound connection. On the listener allow keepassxc.exe through "
-                                  "the firewall and verify the port matches.");
+            detail += QObject::tr("\n判断：该地址/端口没有程序监听，或 Windows 防火墙拦截了入站连接。"
+                                  "请在监听端允许 keepassxc.exe 通过防火墙，并确认两端端口一致。");
             break;
         case QAbstractSocket::HostNotFoundError:
-            detail += QObject::tr("\nHint: the peer IP address is wrong. Use the address shown on the listening device.");
+            detail += QObject::tr("\n判断：对端 IP 地址有误，请使用监听设备上显示的地址。");
             break;
         case QAbstractSocket::NetworkError:
         case QAbstractSocket::SocketTimeoutError:
         case QAbstractSocket::RemoteHostClosedError:
-            detail += QObject::tr("\nHint: make sure both devices are on the same Wi‑Fi/LAN, AP (client) isolation "
-                                  "is off, and no VPN/TUN proxy (e.g. Clash TUN) is capturing LAN traffic.");
+            detail += QObject::tr("\n判断：请确认两台设备在同一 Wi‑Fi/局域网、关闭路由器 AP（客户端）隔离，"
+                                  "且没有 VPN/TUN 代理（如 Clash TUN）劫持局域网流量。");
             break;
         case QAbstractSocket::SslHandshakeFailedError:
         case QAbstractSocket::SslInternalError:
-            detail += QObject::tr("\nHint: TLS 1.3 mutual authentication failed; both sides must present the PmVault "
-                                  "certificate and you must trust the peer fingerprint when first prompted.");
+            detail += QObject::tr("\n判断：TLS 1.3 双向认证失败；双方都必须出示 PmVault 证书，"
+                                  "且首次提示时需信任对端指纹。");
             break;
         default:
             break;
         }
+        note(QObject::tr("底层错误：%1").arg(socket->errorString()));
         fail(detail);
     }
 }
@@ -336,9 +400,9 @@ void PmpSyncEngine::onTimeout()
 {
     if (!m_done) {
         if (m_applied) {
-            finishOk(QObject::tr("Sync completed before timeout."));
+            finishOk(QObject::tr("超时前同步已完成。"));
         } else {
-            fail(QObject::tr("Sync timed out waiting for the peer."));
+            fail(QObject::tr("等待对端超时（监听/连接窗口结束仍未完成握手或交换）。"));
         }
     }
 }
@@ -558,22 +622,22 @@ void PmpSyncEngine::handleMessage(const QJsonObject& msg)
 
     if (type == MSG_APPLIED) {
         m_peerApplied = true;
-        emit logMessage(QObject::tr("Peer applied changes (upsert %1, delete %2, copies %3)")
-                            .arg(msg.value("upserted").toInt())
-                            .arg(msg.value("deleted").toInt())
-                            .arg(msg.value("copies").toInt()));
+        note(QObject::tr("对端已应用变更（更新 %1，删除 %2，冲突副本 %3）")
+                 .arg(msg.value("upserted").toInt())
+                 .arg(msg.value("deleted").toInt())
+                 .arg(msg.value("copies").toInt()));
         if (m_applied) {
             QJsonObject bye;
             bye["type"] = MSG_BYE;
             sendJson(bye);
-            finishOk(QObject::tr("Two-way sync completed."));
+            finishOk(QObject::tr("双向同步完成。"));
         }
         return;
     }
 
     if (type == MSG_BYE) {
         if (m_applied) {
-            finishOk(QObject::tr("Two-way sync completed."));
+            finishOk(QObject::tr("双向同步完成。"));
         }
     }
 }
@@ -647,7 +711,7 @@ void PmpSyncEngine::applyMergeAndReply()
             QJsonObject fields = a.snap.fields;
             const QString title = fields.value(EntryAttributes::TitleKey).toString();
             fields[EntryAttributes::TitleKey] =
-                title + QObject::tr(" (conflict copy %1)").arg(m_peerNode.left(6));
+                title + QObject::tr("（冲突副本 %1）").arg(m_peerNode.left(6));
             for (auto it = fields.constBegin(); it != fields.constEnd(); ++it) {
                 const bool protect = (it.key() == EntryAttributes::PasswordKey);
                 e->attributes()->set(it.key(), it.value().toString(), protect);
@@ -688,7 +752,9 @@ void PmpSyncEngine::applyMergeAndReply()
     m_applied = true;
 
     PmpAuditLog::instance()->record(PmpAuditLog::EvSync, PmpAuditLog::OcSuccess, PmpAuditLog::FldNone,
-                                    PmpAuditLog::TgtLanPeer);
+                                    PmpAuditLog::TgtLanPeer,
+                                    QStringLiteral("peer=%1 up=%2 del=%3 copies=%4")
+                                        .arg(m_peerNode).arg(upserted).arg(deleted).arg(copies).toUtf8());
 
     QJsonObject applied;
     applied["type"] = MSG_APPLIED;
@@ -697,16 +763,16 @@ void PmpSyncEngine::applyMergeAndReply()
     applied["copies"] = copies;
     sendJson(applied);
 
-    emit logMessage(QObject::tr("Merged: %1 updated, %2 deleted, %3 conflict copies.")
-                        .arg(upserted)
-                        .arg(deleted)
-                        .arg(copies));
+    note(QObject::tr("本机已合并：更新 %1 条，删除 %2 条，冲突副本 %3 条。")
+             .arg(upserted)
+             .arg(deleted)
+             .arg(copies));
 
     if (m_peerApplied) {
         QJsonObject bye;
         bye["type"] = MSG_BYE;
         sendJson(bye);
-        finishOk(QObject::tr("Two-way sync completed."));
+        finishOk(QObject::tr("双向同步完成。"));
     }
 }
 
@@ -747,13 +813,14 @@ void PmpSyncEngine::fail(const QString& message)
     if (m_server) {
         m_server->close();
     }
+    const QByteArray detail = (traceTail() + QStringLiteral(" || ") + message).toUtf8();
     PmpAuditLog::instance()->record(PmpAuditLog::EvSyncFailed, PmpAuditLog::OcFailure, PmpAuditLog::FldNone,
-                                    PmpAuditLog::TgtLanPeer);
+                                    PmpAuditLog::TgtLanPeer, detail.left(600));
     m_report.ok = false;
     m_report.message = message;
     m_report.peerNode = m_peerNode;
     m_report.peerFingerprint = m_peerFingerprint;
-    emit logMessage(QObject::tr("Sync failed: %1").arg(message));
+    note(QObject::tr("同步失败：%1").arg(message));
     emit finished(m_report);
 }
 
@@ -776,6 +843,6 @@ void PmpSyncEngine::finishOk(const QString& message)
     m_report.message = message;
     m_report.peerNode = m_peerNode;
     m_report.peerFingerprint = m_peerFingerprint;
-    emit logMessage(message);
+    note(message);
     emit finished(m_report);
 }

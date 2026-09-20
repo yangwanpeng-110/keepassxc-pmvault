@@ -35,6 +35,9 @@ public:
     // Called by the application settings page after the user edits the shortcut.
     void reload();
 
+    // Tear down the native event filter and global hotkey on application quit.
+    void shutdown();
+
     // QAbstractNativeEventFilter
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     bool nativeEventFilter(const QByteArray& eventType, void* message, qintptr* result) override;

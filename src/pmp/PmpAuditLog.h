@@ -85,6 +85,9 @@ public:
         int field = 0;
         int target = 0;
         QString dbId;
+        // Optional, backward-compatible 10th field. Network/TLS diagnostics only;
+        // never entry titles, URLs, usernames, passwords or TOTP codes.
+        QByteArray detail;
     };
 
     struct VerifyResult
@@ -110,6 +113,9 @@ public:
 
     // The ONLY recording entry point. No free-text / value parameters.
     void record(Event event, Outcome outcome = OcSuccess, Field field = FldNone, Target target = TgtNone);
+    // Overload carrying an optional bounded diagnostic detail (network/TLS stage
+    // and error text only; the implementation sanitises and length-caps it).
+    void record(Event event, Outcome outcome, Field field, Target target, const QByteArray& detail);
 
     VerifyResult verify(const QString& databaseFilePath = {}) const;
     QVector<Record> readAll(const QString& databaseFilePath = {}, int maxRecords = 5000) const;

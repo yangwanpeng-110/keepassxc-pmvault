@@ -25,7 +25,7 @@ namespace
 
 QString PmpQuickAccessSettingsPage::name()
 {
-    return QObject::tr("Quick Access Hotkey");
+    return QObject::tr("快速访问热键");
 }
 
 QIcon PmpQuickAccessSettingsPage::icon()
@@ -41,15 +41,15 @@ QWidget* PmpQuickAccessSettingsPage::createWidget()
     auto* layout = new QVBoxLayout(widget);
     layout->setContentsMargins(0, 0, 0, 0);
 
-    auto* enableBox = new QCheckBox(QObject::tr("Enable the global hotkey"), widget);
+    auto* enableBox = new QCheckBox(QObject::tr("启用全局热键"), widget);
     enableBox->setObjectName(QStringLiteral("pmpHotkeyEnabled"));
 
     auto* sequenceEdit = new QKeySequenceEdit(widget);
     sequenceEdit->setObjectName(QStringLiteral("pmpHotkeySequence"));
 
     auto* hint = new QLabel(
-        QObject::tr("The hotkey opens a small panel to copy credentials or run Auto-Type from anywhere. "
-                    "When the database is locked, it raises the unlock screen."),
+        QObject::tr("按下热键可在任意位置弹出小面板，复制账号密码或执行自动填写；"
+                    "数据库锁定时，热键会唤出解锁窗口。"),
         widget);
     hint->setWordWrap(true);
 

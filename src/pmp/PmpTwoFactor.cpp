@@ -143,7 +143,7 @@ bool PmpTwoFactor::confirmEnroll(const QString& databaseFilePath, const QString&
 {
     const QString id16 = idFor(databaseFilePath);
     if (!m_pending.contains(id16)) {
-        error = QObject::tr("No enrollment in progress. Start enrollment again.");
+        error = QObject::tr("当前没有进行中的启用流程，请重新开始启用。");
         return false;
     }
     const QString secret = m_pending.value(id16).secretB32;
@@ -165,7 +165,7 @@ bool PmpTwoFactor::confirmEnroll(const QString& databaseFilePath, const QString&
         }
     }
     if (!matched) {
-        error = QObject::tr("The TOTP code did not match. Scan the QR code and try again.");
+        error = QObject::tr("验证码不正确，请扫描二维码后重试。");
         return false;
     }
 
@@ -177,7 +177,7 @@ bool PmpTwoFactor::confirmEnroll(const QString& databaseFilePath, const QString&
     v.lockUntilMs = 0;
     v.enrolledAtMs = QDateTime::currentMSecsSinceEpoch();
     if (!saveVault(id16, v)) {
-        error = QObject::tr("Failed to write the local second-factor vault.");
+        error = QObject::tr("无法写入本机第二因素保险库。");
         return false;
     }
     m_pending.remove(id16);
@@ -211,7 +211,7 @@ PmpTwoFactor::VerifyResult PmpTwoFactor::verifyInteractive(const QString& databa
     const qlonglong now = QDateTime::currentMSecsSinceEpoch();
     if (v.lockUntilMs > now) {
         const qint64 secs = (v.lockUntilMs - now + 999) / 1000;
-        error = QObject::tr("Too many failed attempts. Try again in %n second(s).", nullptr, int(secs));
+        error = QObject::tr("失败次数过多，请在 %n 秒后再试。", nullptr, int(secs));
         PmpAuditLog::instance()->record(PmpAuditLog::EvTwoFactorFailed, PmpAuditLog::OcDenied,
                                         PmpAuditLog::FldTotp, PmpAuditLog::TgtLocalDatabase);
         return Locked;
@@ -219,7 +219,7 @@ PmpTwoFactor::VerifyResult PmpTwoFactor::verifyInteractive(const QString& databa
 
     const QString entered = normalizeCode(code);
     if (entered.size() != Digits) {
-        error = QObject::tr("Enter the %1-digit code.").arg(Digits);
+        error = QObject::tr("请输入 %1 位数字验证码。").arg(Digits);
         return Wrong;
     }
 
@@ -240,7 +240,7 @@ PmpTwoFactor::VerifyResult PmpTwoFactor::verifyInteractive(const QString& databa
     }
 
     if (matched && static_cast<qlonglong>(matchedCounter) <= static_cast<qlonglong>(v.lastCounter)) {
-        error = QObject::tr("This code has already been used. Wait for the next code.");
+        error = QObject::tr("该验证码已被使用，请等待下一个验证码。");
         PmpAuditLog::instance()->record(PmpAuditLog::EvTwoFactorFailed, PmpAuditLog::OcDenied,
                                         PmpAuditLog::FldTotp, PmpAuditLog::TgtLocalDatabase);
         return Replay;
@@ -267,8 +267,7 @@ PmpTwoFactor::VerifyResult PmpTwoFactor::verifyInteractive(const QString& databa
     }
     saveVault(id16, v);
     const qint64 secs = (v.lockUntilMs - now + 999) / 1000;
-    error = QObject::tr("Incorrect code. %1 attempt(s) remaining before a longer lockout. "
-                        "Retry in %2 second(s).")
+    error = QObject::tr("验证码不正确，距离更长时间锁定还剩 %1 次机会；请在 %2 秒后重试。")
                 .arg(qMax(0, HardLockFailures - v.failCount))
                 .arg(secs);
     PmpAuditLog::instance()->record(PmpAuditLog::EvTwoFactorFailed, PmpAuditLog::OcFailure,

@@ -286,24 +286,40 @@ void PmpQuickAccess::showPanel()
     }
 }
 
+void PmpQuickAccess::shutdown()
+{
+    // Called on QApplication aboutToQuit: the function-local singleton outlives
+    // QApplication, so the native event filter and thread-global hotkey must be
+    // torn down before the Windows tray/window teardown (avoids a crash on exit).
+#ifdef Q_OS_WIN
+    unregisterHotkey();
+#endif
+    if (m_installed) {
+        qApp->removeNativeEventFilter(this);
+        m_installed = false;
+    }
+}
+
 void PmpQuickAccess::showSettings()
 {
     QDialog dlg;
-    dlg.setWindowTitle(tr("Quick Access Hotkey"));
+    dlg.setWindowTitle(tr("快速访问热键"));
     auto* layout = new QVBoxLayout(&dlg);
 
-    auto* enable = new QCheckBox(tr("Enable the global hotkey"), &dlg);
+    auto* enable = new QCheckBox(tr("启用全局热键"), &dlg);
     enable->setChecked(m_enabled);
 
     auto* editor = new QKeySequenceEdit(m_sequence, &dlg);
 
     auto* hint = new QLabel(
-        tr("The hotkey opens a small panel to copy credentials or run Auto-Type from anywhere. "
-           "When the database is locked, it raises the unlock screen."),
+        tr("按下热键可在任意位置弹出小面板，复制账号密码或执行自动填写；"
+           "数据库锁定时，热键会唤出解锁窗口。"),
         &dlg);
     hint->setWordWrap(true);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    buttons->button(QDialogButtonBox::Ok)->setText(tr("确定"));
+    buttons->button(QDialogButtonBox::Cancel)->setText(tr("取消"));
     QObject::connect(buttons, &QDialogButtonBox::accepted, &dlg, [&]() {
         m_enabled = enable->isChecked();
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)

@@ -93,6 +93,9 @@ private:
     void configureSocket(QSslSocket* socket);
     void fail(const QString& message);
     void finishOk(const QString& message);
+    // Emit a log line and append it to a bounded trace used for audit-log diagnostics.
+    void note(const QString& text);
+    QString traceTail(int max = 600) const;
     void sendJson(const QJsonObject& obj);
     void handleMessage(const QJsonObject& msg);
     void sendHelloAndManifest();
@@ -125,6 +128,7 @@ private:
     bool m_done = false;
     QString m_peerFingerprint;
     QString m_peerNode;
+    QString m_trace;
     Report m_report;
 };
 

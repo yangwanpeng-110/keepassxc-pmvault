@@ -108,11 +108,11 @@ void WelcomeWidget::showRecentContextMenu(const QPoint& pos)
         return;
     }
     QMenu menu(this);
-    QAction* openAction = menu.addAction(tr("Open database"));
-    QAction* openFolderAction = menu.addAction(tr("Open containing folder"));
+    QAction* openAction = menu.addAction(tr("打开数据库"));
+    QAction* openFolderAction = menu.addAction(tr("打开所在文件夹"));
     menu.addSeparator();
-    QAction* deleteAction = menu.addAction(tr("Delete database file…"));
-    QAction* removeAction = menu.addAction(tr("Remove from list"));
+    QAction* deleteAction = menu.addAction(tr("删除数据库文件…"));
+    QAction* removeAction = menu.addAction(tr("从列表中移除"));
     QAction* chosen = menu.exec(m_ui->recentListWidget->viewport()->mapToGlobal(pos));
     if (chosen == openAction) {
         openDatabaseFromFile(item);
@@ -144,9 +144,8 @@ void WelcomeWidget::confirmDeleteDatabaseFile(const QString& filePath, QWidget* 
         return;
     }
     const auto answer = QMessageBox::warning(
-        parent, tr("Delete database"),
-        tr("Permanently delete this database file?\n\n%1\n\nThe file and its backup history "
-           "entry will be removed and this cannot be undone.").arg(filePath),
+        parent, tr("删除数据库"),
+        tr("确定永久删除该数据库文件吗？\n\n%1\n\n文件及其备份历史条目都将被移除，此操作无法撤销。").arg(filePath),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (answer != QMessageBox::Yes) {
         return;
@@ -161,8 +160,8 @@ void WelcomeWidget::confirmDeleteDatabaseFile(const QString& filePath, QWidget* 
     }
     if (!removed) {
         QMessageBox::critical(
-            parent, tr("Delete database"),
-            tr("The file could not be deleted. It may be open in another program or protected.\n\n%1")
+            parent, tr("删除数据库"),
+            tr("文件无法删除，可能正被其他程序打开或受保护。\n\n%1")
                 .arg(filePath));
         return;
     }
@@ -172,7 +171,7 @@ void WelcomeWidget::confirmDeleteDatabaseFile(const QString& filePath, QWidget* 
 void WelcomeWidget::manageAllDatabases()
 {
     QDialog dlg(this);
-    dlg.setWindowTitle(tr("Manage databases"));
+    dlg.setWindowTitle(tr("管理数据库"));
     dlg.resize(620, 420);
     auto* layout = new QVBoxLayout(&dlg);
 
@@ -197,10 +196,11 @@ void WelcomeWidget::manageAllDatabases()
     };
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
-    auto* openBtn = buttons->addButton(tr("Open"), QDialogButtonBox::AcceptRole);
-    auto* folderBtn = buttons->addButton(tr("Open containing folder"), QDialogButtonBox::ActionRole);
-    auto* removeBtn = buttons->addButton(tr("Remove from list"), QDialogButtonBox::ActionRole);
-    auto* deleteBtn = buttons->addButton(tr("Delete database file…"), QDialogButtonBox::DestructiveRole);
+    buttons->button(QDialogButtonBox::Close)->setText(tr("关闭"));
+    auto* openBtn = buttons->addButton(tr("打开"), QDialogButtonBox::AcceptRole);
+    auto* folderBtn = buttons->addButton(tr("打开所在文件夹"), QDialogButtonBox::ActionRole);
+    auto* removeBtn = buttons->addButton(tr("从列表中移除"), QDialogButtonBox::ActionRole);
+    auto* deleteBtn = buttons->addButton(tr("删除数据库文件…"), QDialogButtonBox::DestructiveRole);
     layout->addWidget(buttons);
 
     QObject::connect(openBtn, &QPushButton::clicked, &dlg, [&]() {
@@ -239,11 +239,11 @@ void WelcomeWidget::manageAllDatabases()
             return;
         }
         QMenu menu(&dlg);
-        QAction* openAction = menu.addAction(tr("Open database"));
-        QAction* folderAction = menu.addAction(tr("Open containing folder"));
+        QAction* openAction = menu.addAction(tr("打开数据库"));
+        QAction* folderAction = menu.addAction(tr("打开所在文件夹"));
         menu.addSeparator();
-        QAction* deleteAction = menu.addAction(tr("Delete database file…"));
-        QAction* removeAction = menu.addAction(tr("Remove from list"));
+        QAction* deleteAction = menu.addAction(tr("删除数据库文件…"));
+        QAction* removeAction = menu.addAction(tr("从列表中移除"));
         QAction* chosen = menu.exec(list->viewport()->mapToGlobal(pos));
         if (chosen == openAction) {
             emit openDatabaseFile(itm->text());
