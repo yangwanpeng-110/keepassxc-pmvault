@@ -239,9 +239,6 @@ void PmpSyncEngine::onEncrypted()
     if (!socket || socket != m_socket) {
         return;
     }
-    for (const QSslError& e : errors) {
-        emit logMessage(QObject::tr("TLS: %1").arg(e.errorString()));
-    }
     const QSslCertificate peer = socket->peerCertificate();
     if (peer.isNull()) {
         fail(QObject::tr("Mutual TLS failed: no peer certificate."));
