@@ -20,6 +20,7 @@
 #define KEEPASSX_WELCOMEWIDGET_H
 
 #include <QListWidgetItem>
+#include <QPoint>
 
 namespace Ui
 {
@@ -47,6 +48,7 @@ protected:
 
 private slots:
     void openDatabaseFromFile(QListWidgetItem* item);
+    void showRecentContextMenu(const QPoint& pos);
 
 private:
     const QScopedPointer<Ui::WelcomeWidget> m_ui;

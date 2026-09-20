@@ -158,12 +158,12 @@ void PmpQuickAccess::showPanel()
     }
 
     QDialog dlg;
-    dlg.setWindowTitle(tr("PmVault Quick Access"));
+    dlg.setWindowTitle(tr("PmVault 快速访问"));
     dlg.setWindowFlags(Qt::Dialog | Qt::WindowStaysOnTopHint | Qt::Tool);
 
     auto* layout = new QVBoxLayout(&dlg);
     auto* filter = new QLineEdit(&dlg);
-    filter->setPlaceholderText(tr("Search title or username"));
+    filter->setPlaceholderText(tr("搜索标题或用户名"));
     filter->setClearButtonEnabled(true);
     auto* list = new QListWidget(&dlg);
 
@@ -181,10 +181,10 @@ void PmpQuickAccess::showPanel()
     }
 
     auto* buttons = new QHBoxLayout();
-    auto* copyUserBtn = new QPushButton(tr("Copy Username"), &dlg);
-    auto* copyPassBtn = new QPushButton(tr("Copy Password"), &dlg);
-    auto* autoTypeBtn = new QPushButton(tr("Auto-Type"), &dlg);
-    auto* closeBtn = new QPushButton(tr("Close"), &dlg);
+    auto* copyUserBtn = new QPushButton(tr("复制用户名"), &dlg);
+    auto* copyPassBtn = new QPushButton(tr("复制密码"), &dlg);
+    auto* autoTypeBtn = new QPushButton(tr("自动填写"), &dlg);
+    auto* closeBtn = new QPushButton(tr("关闭"), &dlg);
     buttons->addWidget(copyUserBtn);
     buttons->addWidget(copyPassBtn);
     buttons->addWidget(autoTypeBtn);

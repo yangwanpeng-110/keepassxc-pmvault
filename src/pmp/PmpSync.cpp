@@ -205,6 +205,9 @@ void PmpSyncEngine::onSslErrors(const QList<QSslError>& errors)
     if (!socket) {
         return;
     }
+    for (const QSslError& e : errors) {
+        emit logMessage(QObject::tr("TLS: %1").arg(e.errorString()));
+    }
     const QSslCertificate peer = socket->peerCertificate();
     if (peer.isNull()) {
         // Mutual TLS: a peer without a certificate is never acceptable.
@@ -235,6 +238,9 @@ void PmpSyncEngine::onEncrypted()
     auto* socket = qobject_cast<QSslSocket*>(sender());
     if (!socket || socket != m_socket) {
         return;
+    }
+    for (const QSslError& e : errors) {
+        emit logMessage(QObject::tr("TLS: %1").arg(e.errorString()));
     }
     const QSslCertificate peer = socket->peerCertificate();
     if (peer.isNull()) {

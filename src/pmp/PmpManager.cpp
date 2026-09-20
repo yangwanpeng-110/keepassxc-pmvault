@@ -148,7 +148,30 @@ void PmpManager::install()
     }
     m_installed = true;
 
+    ensureMenu();
+
+    // Register the global quick-access hotkey.
+    PmpQuickAccess::instance()->install();
+
+    // Record lock events centrally.
+    connect(mw, &MainWindow::databaseLocked, this, [](DatabaseWidget*) {
+        PmpAuditLog::instance()->record(PmpAuditLog::EvLock, PmpAuditLog::OcInfo, PmpAuditLog::FldNone,
+                                        PmpAuditLog::TgtLocalDatabase);
+    });
+}
+
+void PmpManager::ensureMenu()
+{
+    MainWindow* mw = getMainWindow();
+    if (!mw || !mw->menuBar()) {
+        return;
+    }
+    const QString kMenuObj = QStringLiteral("pmvault_menu");
+    if (mw->menuBar()->findChild<QMenu*>(kMenuObj)) {
+        return; // already present
+    }
     auto* menu = mw->menuBar()->addMenu(QObject::tr("PmVault"));
+    menu->setObjectName(kMenuObj);
     menu->addAction(QObject::tr("Enable Second Factor (TOTP)…"), this, &PmpManager::enrollTwoFactor);
     menu->addAction(QObject::tr("Remove Second Factor…"), this, &PmpManager::removeTwoFactor);
     menu->addSeparator();
@@ -160,15 +183,6 @@ void PmpManager::install()
     menu->addSeparator();
     menu->addAction(QObject::tr("View Audit Log…"), this, &PmpManager::showAuditLog);
     menu->addAction(QObject::tr("LAN Sync…"), this, &PmpManager::showSync);
-
-    // Register the global quick-access hotkey.
-    PmpQuickAccess::instance()->install();
-
-    // Record lock events centrally.
-    connect(mw, &MainWindow::databaseLocked, this, [](DatabaseWidget*) {
-        PmpAuditLog::instance()->record(PmpAuditLog::EvLock, PmpAuditLog::OcInfo, PmpAuditLog::FldNone,
-                                        PmpAuditLog::TgtLocalDatabase);
-    });
 }
 
 bool PmpManager::secondFactorGate(QWidget* parent, const QString& filePath)
@@ -410,7 +424,7 @@ void PmpManager::showSync()
     root->addWidget(mode);
 
     auto* form = new QFormLayout();
-    auto* hostEdit = new QLineEdit(QStringLiteral("192.168.1."), &dlg);
+    auto* hostEdit = new QLineEdit(&dlg);
     hostEdit->setPlaceholderText(tr("peer LAN IP, e.g. 192.168.1.20"));
     auto* portSpin = new QSpinBox(&dlg);
     portSpin->setRange(1024, 65535);
@@ -631,6 +645,7 @@ void PmpManager::onDatabaseCreated(DatabaseWidget* widget)
     }
     Database* db = widget->database().data();
     hardenDatabase(db);
+    ensureMenu();
 
     const auto answer = QMessageBox::question(
         getMainWindow(), tr("PmVault"),

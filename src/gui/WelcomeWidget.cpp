@@ -18,7 +18,15 @@
 
 #include "WelcomeWidget.h"
 #include "ui_WelcomeWidget.h"
+#include <QAction>
+#include <QDesktopServices>
+#include <QDir>
+#include <QFileInfo>
 #include <QKeyEvent>
+#include <QListWidget>
+#include <QMenu>
+#include <QProcess>
+#include <QUrl>
 
 #include "config-keepassx.h"
 #include "core/Config.h"
@@ -53,6 +61,11 @@ WelcomeWidget::WelcomeWidget(QWidget* parent)
             SIGNAL(itemActivated(QListWidgetItem*)),
             this,
             SLOT(openDatabaseFromFile(QListWidgetItem*)));
+
+    // PmVault: right-click a recent database to open its folder or remove it.
+    m_ui->recentListWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_ui->recentListWidget, &QListWidget::customContextMenuRequested,
+            this, &WelcomeWidget::showRecentContextMenu);
 }
 
 WelcomeWidget::~WelcomeWidget()
@@ -65,6 +78,31 @@ void WelcomeWidget::openDatabaseFromFile(QListWidgetItem* item)
         return;
     }
     emit openDatabaseFile(item->text());
+}
+
+void WelcomeWidget::showRecentContextMenu(const QPoint& pos)
+{
+    QListWidgetItem* item = m_ui->recentListWidget->itemAt(pos);
+    if (!item || item->text().isEmpty()) {
+        return;
+    }
+    QMenu menu(this);
+    QAction* openFolderAction = menu.addAction(tr("Open containing folder"));
+    QAction* removeAction = menu.addAction(tr("Remove from list"));
+    QAction* chosen = menu.exec(m_ui->recentListWidget->viewport()->mapToGlobal(pos));
+    if (chosen == openFolderAction) {
+        const QFileInfo fi(item->text());
+#ifdef Q_OS_WIN
+        // Select the database file in Explorer.
+        QProcess::startDetached(QStringLiteral("explorer.exe"),
+                                QStringList{QStringLiteral("/select,") +
+                                            QDir::toNativeSeparators(fi.absoluteFilePath())});
+#else
+        QDesktopServices::openUrl(QUrl::fromLocalFile(fi.absolutePath()));
+#endif
+    } else if (chosen == removeAction) {
+        removeFromLastDatabases(item);
+    }
 }
 
 void WelcomeWidget::removeFromLastDatabases(QListWidgetItem* item)

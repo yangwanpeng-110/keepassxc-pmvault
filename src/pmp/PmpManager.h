@@ -23,6 +23,8 @@ class PmpManager : public QObject
 public:
     static PmpManager* instance();
     void install();
+    // Idempotently (re)add the PmVault menu; recovers it if the menu bar is rebuilt.
+    void ensureMenu();
 
     // Called by the open-database widget.
     static bool secondFactorGate(QWidget* parent, const QString& filePath);
