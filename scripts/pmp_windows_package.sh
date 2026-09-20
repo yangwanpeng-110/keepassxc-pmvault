@@ -182,6 +182,24 @@ if [ -f "share/windows/qt.conf" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# 4d) Chromium browser bridge extension (MV3). Ship it next to the executables
+#     as pmvault-browser-extension/ so users can load it unpacked directly from
+#     the portable folder; host/install-host.bat auto-locates keepassxc-proxy.exe
+#     two levels up. No build step, static HTML/JS/PNG assets only.
+# ---------------------------------------------------------------------------
+if [ -d "share/pmvault-browser-extension" ]; then
+    mkdir -p "${PKG_DIR}/pmvault-browser-extension"
+    cp -rf share/pmvault-browser-extension/. "${PKG_DIR}/pmvault-browser-extension/"
+    if [ -f "${PKG_DIR}/pmvault-browser-extension/manifest.json" ]; then
+        log "browser extension: bundled at pmvault-browser-extension/"
+    else
+        log "WARNING: browser extension copy incomplete"
+    fi
+else
+    log "WARNING: share/pmvault-browser-extension not found; bridge not bundled"
+fi
+
+# ---------------------------------------------------------------------------
 # 5) Recursive ldd sweep: pull every MINGW runtime DLL the exe AND all deployed
 #    plugins depend on (botan, argon2, minizip, qrencode, zlib, Qt5*, MinGW
 #    runtime, ...). Repeated until no new DLL appears, so transitive deps of the
@@ -229,6 +247,10 @@ Included PmVault extensions (all data stays local, nothing is uploaded):
   * TOTP second factor for database unlock (manual code entry).
   * Local encrypted, tamper-evident audit log (outside the database).
   * LAN mutual-TLS-1.3 sync (disabled by default, port 19532).
+  * Chromium browser bridge in pmvault-browser-extension/ (MV3):
+      1. Enable Settings > Browser Integration > Chrome/Edge in the app.
+      2. Run pmvault-browser-extension\host\install-host.bat.
+      3. Load pmvault-browser-extension as an unpacked extension and associate.
 
 Mature KeePassXC features (browser fill, Auto-Type, entry TOTP, ...) are
 unchanged. This program is GPL software; see LICENSE-GPL.txt.

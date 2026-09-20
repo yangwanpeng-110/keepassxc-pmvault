@@ -14,6 +14,8 @@ set "EXTID=efcjblaacddijgiakoocgkhdmihlgpfp"
 set "PROXY=%~1"
 
 if "%PROXY%"=="" if exist "%~dp0..\keepassxc-proxy.exe" set "PROXY=%~dp0..\keepassxc-proxy.exe"
+rem Bundled portable layout: <root>\pmvault-browser-extension\host\install-host.bat
+if "%PROXY%"=="" if exist "%~dp0..\..\keepassxc-proxy.exe" set "PROXY=%~dp0..\..\keepassxc-proxy.exe"
 if "%PROXY%"=="" if exist "%~dp0keepassxc-proxy.exe" set "PROXY=%~dp0keepassxc-proxy.exe"
 
 if not exist "%PROXY%" (
