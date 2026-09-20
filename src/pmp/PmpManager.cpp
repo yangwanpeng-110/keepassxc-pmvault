@@ -49,6 +49,8 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QNetworkInterface>
+#include <QHostAddress>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSpinBox>
@@ -150,6 +152,14 @@ void PmpManager::install()
 
     ensureMenu();
 
+    // PmVault: keep our menu alive even if Qt rebuilds/repopulates the menu bar
+    // (root cause of the "LAN Sync" entry disappearing after a sync or tab change).
+    mw->menuBar()->installEventFilter(this);
+    if (auto* tabs = mw->findChild<DatabaseTabWidget*>()) {
+        connect(tabs, &DatabaseTabWidget::databaseOpened, this, [this](DatabaseWidget*) { ensureMenu(); });
+        connect(tabs, &DatabaseTabWidget::databaseUnlocked, this, [this](DatabaseWidget*) { ensureMenu(); });
+    }
+
     // Register the global quick-access hotkey.
     PmpQuickAccess::instance()->install();
 
@@ -172,6 +182,13 @@ void PmpManager::ensureMenu()
     }
     auto* menu = mw->menuBar()->addMenu(QObject::tr("PmVault"));
     menu->setObjectName(kMenuObj);
+    QAction* manageAction = menu->addAction(QObject::tr("Manage databases…"));
+    connect(manageAction, &QAction::triggered, this, [mw]() {
+        if (QObject* welcome = mw->findChild<QObject*>("welcomeWidget")) {
+            QMetaObject::invokeMethod(welcome, "manageAllDatabases", Qt::QueuedConnection);
+        }
+    });
+    menu->addSeparator();
     menu->addAction(QObject::tr("Enable Second Factor (TOTP)…"), this, &PmpManager::enrollTwoFactor);
     menu->addAction(QObject::tr("Remove Second Factor…"), this, &PmpManager::removeTwoFactor);
     menu->addSeparator();
@@ -183,6 +200,18 @@ void PmpManager::ensureMenu()
     menu->addSeparator();
     menu->addAction(QObject::tr("View Audit Log…"), this, &PmpManager::showAuditLog);
     menu->addAction(QObject::tr("LAN Sync…"), this, &PmpManager::showSync);
+}
+
+bool PmpManager::eventFilter(QObject* watched, QEvent* event)
+{
+    // When the menu bar loses a child (a menu being torn down/rebuilt), re-check on
+    // the next event-loop iteration whether our PmVault menu is still there and
+    // recreate it if not. Queued so we never mutate the widget tree mid-event.
+    MainWindow* mw = getMainWindow();
+    if (mw && watched == mw->menuBar() && event->type() == QEvent::ChildRemoved) {
+        QTimer::singleShot(0, this, [this]() { ensureMenu(); });
+    }
+    return QObject::eventFilter(watched, event);
 }
 
 bool PmpManager::secondFactorGate(QWidget* parent, const QString& filePath)
@@ -419,7 +448,7 @@ void PmpManager::showSync()
     auto* root = new QVBoxLayout(&dlg);
 
     auto* mode = new QComboBox(&dlg);
-    mode->addItem(tr("Listen for an incoming peer (single, 30 s)"));
+    mode->addItem(tr("Listen for an incoming peer (single, 60 s)"));
     mode->addItem(tr("Connect to a peer"));
     root->addWidget(mode);
 
@@ -443,6 +472,30 @@ void PmpManager::showSync()
     nodeLabel->setText(tr("This device node: %1").arg(identity.nodeId));
     nodeLabel->setWordWrap(true);
     root->addWidget(nodeLabel);
+
+    // Show this PC's LAN IPv4 addresses up front so the user knows what to type on
+    // the phone (and can spot a VPN/TUN virtual adapter hijacking the LAN).
+    QStringList addrs;
+    const auto interfaces = QNetworkInterface::allInterfaces();
+    for (const QNetworkInterface& iface : interfaces) {
+        if (!(iface.flags() & QNetworkInterface::IsUp) || !(iface.flags() & QNetworkInterface::IsRunning)
+            || (iface.flags() & QNetworkInterface::IsLoopBack)) {
+            continue;
+        }
+        for (const QNetworkAddressEntry& entry : iface.addressEntries()) {
+            const QHostAddress ip = entry.ip();
+            if (ip.protocol() == QAbstractSocket::IPv4Protocol && !ip.isLoopBack()) {
+                addrs << QStringLiteral("%1 (%2)").arg(ip.toString(), iface.humanReadableName());
+            }
+        }
+    }
+    auto* ipLabel = new QLabel(&dlg);
+    ipLabel->setWordWrap(true);
+    ipLabel->setStyleSheet(QStringLiteral("color:#35537a;"));
+    ipLabel->setText(addrs.isEmpty()
+                         ? tr("No active LAN IPv4 address found. Connect to a network first.")
+                         : tr("This PC's LAN address(es): %1").arg(addrs.join(", ")));
+    root->addWidget(ipLabel);
 
     auto* startBtn = new QPushButton(tr("Start"), &dlg);
     root->addWidget(startBtn);

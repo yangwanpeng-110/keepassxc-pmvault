@@ -29,6 +29,7 @@
 #include <QSslKey>
 #include <QSslSocket>
 #include <QTcpServer>
+#include <QNetworkInterface>
 
 // Value types (VClock, Snapshot, State, ...) live in the PmpSync namespace
 // declared in PmpSyncTypes.h. The QObject engine class is PmpSyncEngine.
@@ -51,6 +52,29 @@ namespace
     QString uuidStr(const Entry* e)
     {
         return e->uuid().toString(QUuid::WithoutBraces);
+    }
+
+    // Enumerate this device's usable LAN IPv4 addresses, so the user knows exactly
+    // which address to type on the other device (Wi‑Fi vs Ethernet vs VPN adapters
+    // often coexist and the wrong one is a common cause of failed syncs).
+    QStringList localIpv4List()
+    {
+        QStringList out;
+        const auto interfaces = QNetworkInterface::allInterfaces();
+        for (const QNetworkInterface& iface : interfaces) {
+            if (!(iface.flags() & QNetworkInterface::IsUp)
+                || !(iface.flags() & QNetworkInterface::IsRunning)
+                || (iface.flags() & QNetworkInterface::IsLoopBack)) {
+                continue;
+            }
+            for (const QNetworkAddressEntry& entry : iface.addressEntries()) {
+                const QHostAddress ip = entry.ip();
+                if (ip.protocol() == QAbstractSocket::IPv4Protocol && !ip.isLoopBack()) {
+                    out << QStringLiteral("%1 (%2)").arg(ip.toString(), iface.humanReadableName());
+                }
+            }
+        }
+        return out;
     }
 
     // TLS server that upgrades every inbound TCP connection to SSL.
@@ -128,10 +152,12 @@ void PmpSyncEngine::start(Database* db, const Options& options)
     m_timer = new QTimer(this);
     m_timer->setSingleShot(true);
     connect(m_timer, &QTimer::timeout, this, &PmpSyncEngine::onTimeout);
-    m_timer->start(options.listen ? 30000 : 15000);
+    m_timer->start(options.listen ? 60000 : 20000);
+
+    const QStringList localAddrs = localIpv4List();
 
     if (options.listen) {
-        emit logMessage(QObject::tr("Listening for a single LAN peer on port %1 (30 s)…").arg(options.port));
+        emit logMessage(QObject::tr("Listening for a single LAN peer on port %1 (60 s)…").arg(options.port));
         auto* server = new PmpSslServer(this);
         server->setupSocket = [this](QSslSocket* s) { configureSocket(s); };
         connect(server, &QTcpServer::newConnection, this, &PmpSyncEngine::onNewConnection);
@@ -140,8 +166,17 @@ void PmpSyncEngine::start(Database* db, const Options& options)
             return;
         }
         m_server = server;
+        if (localAddrs.isEmpty()) {
+            emit logMessage(QObject::tr("No active LAN IPv4 address was found; connect this device to a network first."));
+        } else {
+            emit logMessage(QObject::tr("This device's LAN address(es): %1").arg(localAddrs.join(", ")));
+        }
+        emit logMessage(QObject::tr("On the other device choose \"Connect to a peer\" and enter one of these addresses."));
     } else {
         emit logMessage(QObject::tr("Connecting to %1:%2 over TLS 1.3…").arg(options.host).arg(options.port));
+        if (!localAddrs.isEmpty()) {
+            emit logMessage(QObject::tr("This device's LAN address(es): %1").arg(localAddrs.join(", ")));
+        }
         auto* socket = new QSslSocket(this);
         configureSocket(socket);
         m_socket = socket;
@@ -269,7 +304,31 @@ void PmpSyncEngine::onSocketError()
 {
     auto* socket = qobject_cast<QSslSocket*>(sender());
     if (socket && !m_done) {
-        fail(socket->errorString());
+        QString detail = socket->errorString();
+        switch (socket->error()) {
+        case QAbstractSocket::ConnectionRefusedError:
+            detail += QObject::tr("\nHint: nothing is listening on that address/port, or the Windows Firewall "
+                                  "blocked the inbound connection. On the listener allow keepassxc.exe through "
+                                  "the firewall and verify the port matches.");
+            break;
+        case QAbstractSocket::HostNotFoundError:
+            detail += QObject::tr("\nHint: the peer IP address is wrong. Use the address shown on the listening device.");
+            break;
+        case QAbstractSocket::NetworkError:
+        case QAbstractSocket::SocketTimeoutError:
+        case QAbstractSocket::RemoteHostClosedError:
+            detail += QObject::tr("\nHint: make sure both devices are on the same Wi‑Fi/LAN, AP (client) isolation "
+                                  "is off, and no VPN/TUN proxy (e.g. Clash TUN) is capturing LAN traffic.");
+            break;
+        case QAbstractSocket::SslHandshakeFailedError:
+        case QAbstractSocket::SslInternalError:
+            detail += QObject::tr("\nHint: TLS 1.3 mutual authentication failed; both sides must present the PmVault "
+                                  "certificate and you must trust the peer fingerprint when first prompted.");
+            break;
+        default:
+            break;
+        }
+        fail(detail);
     }
 }
 

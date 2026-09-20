@@ -43,6 +43,7 @@
 #include "gui/Icons.h"
 #include "gui/MessageBox.h"
 #include "gui/SearchWidget.h"
+#include "gui/WelcomeWidget.h"
 #include "gui/entry/EntryView.h"
 #include "gui/osutils/OSUtils.h"
 #include "pmp/PmpQuickAccessSettingsPage.h"
@@ -390,7 +391,8 @@ MainWindow::MainWindow()
     m_ui->actionDatabaseOpen->setIcon(icons()->icon("document-open"));
     m_ui->menuRecentDatabases->setIcon(icons()->icon("document-open-recent"));
     m_ui->actionDatabaseSave->setIcon(icons()->icon("document-save"));
-    m_ui->actionDatabaseSaveAs->setIcon(icons()->icon("document-save-as"));
+    // PmVault: "Save As" is hidden; only "Save Database Backup" is offered.
+    m_ui->actionDatabaseSaveAs->setVisible(false);
     m_ui->actionDatabaseSaveBackup->setIcon(icons()->icon("document-save-copy"));
     m_ui->actionDatabaseClose->setIcon(icons()->icon("document-close"));
     m_ui->actionReports->setIcon(icons()->icon("reports"));
@@ -596,6 +598,22 @@ MainWindow::MainWindow()
     connect(m_ui->welcomeWidget, SIGNAL(openDatabase()), SLOT(switchToOpenDatabase()));
     connect(m_ui->welcomeWidget, SIGNAL(openDatabaseFile(QString)), SLOT(switchToDatabaseFile(QString)));
     connect(m_ui->welcomeWidget, SIGNAL(importFile()), m_ui->tabWidget, SLOT(importFile()));
+
+    // PmVault: before a database file is deleted, quietly close any tab that has
+    // the same file open so the OS does not keep a sharing lock on it.
+    connect(m_ui->welcomeWidget, &WelcomeWidget::deleteDatabaseFileRequested, this, [this](const QString& filePath) {
+        if (filePath.isEmpty() || !m_ui->tabWidget) {
+            return;
+        }
+        const QString target = QFileInfo(filePath).canonicalFilePath();
+        for (int i = m_ui->tabWidget->count() - 1; i >= 0; --i) {
+            DatabaseWidget* dbWidget = m_ui->tabWidget->databaseWidgetFromIndex(i);
+            if (dbWidget && dbWidget->database()
+                && QFileInfo(dbWidget->database()->filePath()).canonicalFilePath() == target) {
+                m_ui->tabWidget->closeDatabaseTab(i);
+            }
+        }
+    });
 
     connect(m_ui->actionAbout, SIGNAL(triggered()), SLOT(showAboutDialog()));
     connect(m_ui->actionDonate, SIGNAL(triggered()), SLOT(openDonateUrl()));
@@ -816,6 +834,11 @@ bool MainWindow::refreshHardwareKeys()
 void MainWindow::updateLastDatabasesMenu()
 {
     m_ui->menuRecentDatabases->clear();
+
+    // PmVault: full database manager (open / reveal / remove / delete).
+    QAction* manageAction = m_ui->menuRecentDatabases->addAction(tr("Manage databases…"));
+    connect(manageAction, &QAction::triggered, m_ui->welcomeWidget, &WelcomeWidget::manageAllDatabases);
+    m_ui->menuRecentDatabases->addSeparator();
 
     const QStringList lastDatabases = config()->get(Config::LastDatabases).toStringList();
     for (const QString& database : lastDatabases) {

@@ -35,12 +35,20 @@ public:
     explicit WelcomeWidget(QWidget* parent = nullptr);
     ~WelcomeWidget();
     void refreshLastDatabases();
+    // Reveal a database file in the platform file manager.
+    static void openContainingFolder(const QString& filePath);
+
+public slots:
+    // PmVault: full database manager dialog (open / reveal / remove / delete).
+    void manageAllDatabases();
 
 signals:
     void newDatabase();
     void openDatabase();
     void openDatabaseFile(QString);
     void importFile();
+    // Emitted when the user asks to permanently delete a database file.
+    void deleteDatabaseFileRequested(QString filePath);
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
@@ -53,6 +61,8 @@ private slots:
 private:
     const QScopedPointer<Ui::WelcomeWidget> m_ui;
     void removeFromLastDatabases(QListWidgetItem* item);
+    void removePathFromLastDatabases(const QString& filePath);
+    void confirmDeleteDatabaseFile(const QString& filePath, QWidget* parent);
 };
 
 #endif // KEEPASSX_WELCOMEWIDGET_H

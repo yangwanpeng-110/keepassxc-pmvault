@@ -18,15 +18,23 @@
 
 #include "WelcomeWidget.h"
 #include "ui_WelcomeWidget.h"
+#include <QAbstractItemView>
 #include <QAction>
 #include <QDesktopServices>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QListWidget>
 #include <QMenu>
+#include <QMessageBox>
 #include <QProcess>
+#include <QPushButton>
 #include <QUrl>
+#include <QVBoxLayout>
 
 #include "config-keepassx.h"
 #include "core/Config.h"
@@ -80,6 +88,19 @@ void WelcomeWidget::openDatabaseFromFile(QListWidgetItem* item)
     emit openDatabaseFile(item->text());
 }
 
+void WelcomeWidget::openContainingFolder(const QString& filePath)
+{
+    const QFileInfo fi(filePath);
+#ifdef Q_OS_WIN
+    // Select the database file in Explorer.
+    QProcess::startDetached(QStringLiteral("explorer.exe"),
+                            QStringList{QStringLiteral("/select,") +
+                                        QDir::toNativeSeparators(fi.absoluteFilePath())});
+#else
+    QDesktopServices::openUrl(QUrl::fromLocalFile(fi.absolutePath()));
+#endif
+}
+
 void WelcomeWidget::showRecentContextMenu(const QPoint& pos)
 {
     QListWidgetItem* item = m_ui->recentListWidget->itemAt(pos);
@@ -87,22 +108,166 @@ void WelcomeWidget::showRecentContextMenu(const QPoint& pos)
         return;
     }
     QMenu menu(this);
+    QAction* openAction = menu.addAction(tr("Open database"));
     QAction* openFolderAction = menu.addAction(tr("Open containing folder"));
+    menu.addSeparator();
+    QAction* deleteAction = menu.addAction(tr("Delete database file…"));
     QAction* removeAction = menu.addAction(tr("Remove from list"));
     QAction* chosen = menu.exec(m_ui->recentListWidget->viewport()->mapToGlobal(pos));
-    if (chosen == openFolderAction) {
-        const QFileInfo fi(item->text());
-#ifdef Q_OS_WIN
-        // Select the database file in Explorer.
-        QProcess::startDetached(QStringLiteral("explorer.exe"),
-                                QStringList{QStringLiteral("/select,") +
-                                            QDir::toNativeSeparators(fi.absoluteFilePath())});
-#else
-        QDesktopServices::openUrl(QUrl::fromLocalFile(fi.absolutePath()));
-#endif
+    if (chosen == openAction) {
+        openDatabaseFromFile(item);
+    } else if (chosen == openFolderAction) {
+        openContainingFolder(item->text());
+    } else if (chosen == deleteAction) {
+        confirmDeleteDatabaseFile(item->text(), this);
+        refreshLastDatabases();
     } else if (chosen == removeAction) {
         removeFromLastDatabases(item);
     }
+}
+
+void WelcomeWidget::removePathFromLastDatabases(const QString& filePath)
+{
+    if (filePath.isEmpty()) {
+        return;
+    }
+    if (config()->get(Config::RememberLastDatabases).toBool()) {
+        QStringList lastDatabases = config()->get(Config::LastDatabases).toStringList();
+        lastDatabases.removeAll(filePath);
+        config()->set(Config::LastDatabases, lastDatabases);
+    }
+}
+
+void WelcomeWidget::confirmDeleteDatabaseFile(const QString& filePath, QWidget* parent)
+{
+    if (filePath.isEmpty()) {
+        return;
+    }
+    const auto answer = QMessageBox::warning(
+        parent, tr("Delete database"),
+        tr("Permanently delete this database file?\n\n%1\n\nThe file and its backup history "
+           "entry will be removed and this cannot be undone.").arg(filePath),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+    // Ask the main window to close any tab that still has the database open
+    // (synchronous direct connection) before removing the file on disk.
+    emit deleteDatabaseFileRequested(filePath);
+
+    bool removed = true;
+    if (QFileInfo::exists(filePath)) {
+        removed = QFile::remove(filePath);
+    }
+    if (!removed) {
+        QMessageBox::critical(
+            parent, tr("Delete database"),
+            tr("The file could not be deleted. It may be open in another program or protected.\n\n%1")
+                .arg(filePath));
+        return;
+    }
+    removePathFromLastDatabases(filePath);
+}
+
+void WelcomeWidget::manageAllDatabases()
+{
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("Manage databases"));
+    dlg.resize(620, 420);
+    auto* layout = new QVBoxLayout(&dlg);
+
+    auto* list = new QListWidget(&dlg);
+    list->setSelectionMode(QAbstractItemView::SingleSelection);
+    list->setContextMenuPolicy(Qt::CustomContextMenu);
+    layout->addWidget(list);
+
+    auto populate = [this, list]() {
+        list->clear();
+        const QStringList lastDatabases = config()->get(Config::LastDatabases).toStringList();
+        for (const QString& database : lastDatabases) {
+            auto* itm = new QListWidgetItem(database, list);
+            itm->setToolTip(database);
+        }
+    };
+    populate();
+
+    auto selectedPath = [list]() -> QString {
+        QListWidgetItem* itm = list->currentItem();
+        return itm ? itm->text() : QString();
+    };
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
+    auto* openBtn = buttons->addButton(tr("Open"), QDialogButtonBox::AcceptRole);
+    auto* folderBtn = buttons->addButton(tr("Open containing folder"), QDialogButtonBox::ActionRole);
+    auto* removeBtn = buttons->addButton(tr("Remove from list"), QDialogButtonBox::ActionRole);
+    auto* deleteBtn = buttons->addButton(tr("Delete database file…"), QDialogButtonBox::DestructiveRole);
+    layout->addWidget(buttons);
+
+    QObject::connect(openBtn, &QPushButton::clicked, &dlg, [&]() {
+        const QString path = selectedPath();
+        if (!path.isEmpty()) {
+            emit openDatabaseFile(path);
+            dlg.accept();
+        }
+    });
+    QObject::connect(folderBtn, &QPushButton::clicked, &dlg, [&]() {
+        const QString path = selectedPath();
+        if (!path.isEmpty()) {
+            openContainingFolder(path);
+        }
+    });
+    QObject::connect(removeBtn, &QPushButton::clicked, &dlg, [&]() {
+        const QString path = selectedPath();
+        if (!path.isEmpty()) {
+            removePathFromLastDatabases(path);
+            populate();
+        }
+    });
+    QObject::connect(deleteBtn, &QPushButton::clicked, &dlg, [&]() {
+        const QString path = selectedPath();
+        if (!path.isEmpty()) {
+            confirmDeleteDatabaseFile(path, &dlg);
+            populate();
+            refreshLastDatabases();
+        }
+    });
+
+    // Right-click menu mirroring the buttons.
+    QObject::connect(list, &QListWidget::customContextMenuRequested, &dlg, [&](const QPoint& pos) {
+        QListWidgetItem* itm = list->itemAt(pos);
+        if (!itm) {
+            return;
+        }
+        QMenu menu(&dlg);
+        QAction* openAction = menu.addAction(tr("Open database"));
+        QAction* folderAction = menu.addAction(tr("Open containing folder"));
+        menu.addSeparator();
+        QAction* deleteAction = menu.addAction(tr("Delete database file…"));
+        QAction* removeAction = menu.addAction(tr("Remove from list"));
+        QAction* chosen = menu.exec(list->viewport()->mapToGlobal(pos));
+        if (chosen == openAction) {
+            emit openDatabaseFile(itm->text());
+            dlg.accept();
+        } else if (chosen == folderAction) {
+            openContainingFolder(itm->text());
+        } else if (chosen == removeAction) {
+            removePathFromLastDatabases(itm->text());
+            populate();
+        } else if (chosen == deleteAction) {
+            confirmDeleteDatabaseFile(itm->text(), &dlg);
+            populate();
+            refreshLastDatabases();
+        }
+    });
+    QObject::connect(list, &QListWidget::itemActivated, &dlg, [&](QListWidgetItem* itm) {
+        if (itm) {
+            emit openDatabaseFile(itm->text());
+            dlg.accept();
+        }
+    });
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    dlg.exec();
 }
 
 void WelcomeWidget::removeFromLastDatabases(QListWidgetItem* item)
@@ -110,12 +275,7 @@ void WelcomeWidget::removeFromLastDatabases(QListWidgetItem* item)
     if (!item || item->text().isEmpty()) {
         return;
     }
-
-    if (config()->get(Config::RememberLastDatabases).toBool()) {
-        QStringList lastDatabases = config()->get(Config::LastDatabases).toStringList();
-        lastDatabases.removeOne(item->text());
-        config()->set(Config::LastDatabases, lastDatabases);
-    }
+    removePathFromLastDatabases(item->text());
     refreshLastDatabases();
 }
 

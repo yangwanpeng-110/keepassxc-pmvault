@@ -9,6 +9,7 @@
 #define PMP_MANAGER_H
 
 #include <QObject>
+#include <QEvent>
 #include <QString>
 #include <QVector>
 
@@ -68,6 +69,10 @@ private:
     Database* currentDatabase(DatabaseWidget** outWidget = nullptr) const;
 
     bool m_installed = false;
+
+protected:
+    // Re-adds the PmVault menu if Qt ever removes it while rebuilding the menu bar.
+    bool eventFilter(QObject* watched, QEvent* event) override;
 };
 
 #endif // PMP_MANAGER_H
