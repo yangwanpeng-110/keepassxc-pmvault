@@ -219,9 +219,8 @@ void PmpSyncEngine::start(Database* db, const Options& options)
                     case QAbstractSocket::ConnectedState:
                         name = QObject::tr("TCP 已连接");
                         break;
-                    case QSslSocket::EncryptedState:
-                        name = QObject::tr("TLS 已加密");
-                        break;
+                    // Note: there is no portable EncryptedState enum in Qt 5; the
+                    // encrypted() signal (onEncrypted) logs the secured-channel stage.
                     case QAbstractSocket::UnconnectedState:
                         name = QObject::tr("连接已断开");
                         break;
