@@ -479,12 +479,12 @@ void PmpManager::showSync()
     const auto interfaces = QNetworkInterface::allInterfaces();
     for (const QNetworkInterface& iface : interfaces) {
         if (!(iface.flags() & QNetworkInterface::IsUp) || !(iface.flags() & QNetworkInterface::IsRunning)
-            || (iface.flags() & QNetworkInterface::IsLoopBack)) {
+            || (iface.flags() & QNetworkInterface::isLoopback)) {
             continue;
         }
         for (const QNetworkAddressEntry& entry : iface.addressEntries()) {
             const QHostAddress ip = entry.ip();
-            if (ip.protocol() == QAbstractSocket::IPv4Protocol && !ip.isLoopBack()) {
+            if (ip.protocol() == QAbstractSocket::IPv4Protocol && !ip.isLoopback()) {
                 addrs << QStringLiteral("%1 (%2)").arg(ip.toString(), iface.humanReadableName());
             }
         }
