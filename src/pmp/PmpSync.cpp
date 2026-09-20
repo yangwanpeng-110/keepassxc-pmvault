@@ -172,7 +172,7 @@ void PmpSyncEngine::start(Database* db, const Options& options)
 
     note(QObject::tr("OpenSSL 版本：%1；编译期 SSL 版本：%2")
              .arg(QSslSocket::sslLibraryVersionString(),
-                  QString::fromLatin1(QSslSocket::sslLibraryBuildVersionString())));
+                  QSslSocket::sslLibraryBuildVersionString()));
 
     m_timer = new QTimer(this);
     m_timer->setSingleShot(true);
@@ -219,7 +219,7 @@ void PmpSyncEngine::start(Database* db, const Options& options)
                     case QAbstractSocket::ConnectedState:
                         name = QObject::tr("TCP 已连接");
                         break;
-                    case QAbstractSocket::EncryptedState:
+                    case QSslSocket::EncryptedState:
                         name = QObject::tr("TLS 已加密");
                         break;
                     case QAbstractSocket::UnconnectedState:
