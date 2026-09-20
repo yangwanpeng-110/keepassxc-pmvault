@@ -479,7 +479,7 @@ void PmpManager::showSync()
     const auto interfaces = QNetworkInterface::allInterfaces();
     for (const QNetworkInterface& iface : interfaces) {
         if (!(iface.flags() & QNetworkInterface::IsUp) || !(iface.flags() & QNetworkInterface::IsRunning)
-            || (iface.flags() & QNetworkInterface::isLoopback)) {
+            || (iface.flags() & QNetworkInterface::IsLoopBack)) {
             continue;
         }
         for (const QNetworkAddressEntry& entry : iface.addressEntries()) {
