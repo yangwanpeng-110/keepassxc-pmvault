@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>About KeePassXC</string>
+   <string>关于 PmVault</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,1,0">
    <item>
@@ -59,7 +59,7 @@
         </font>
        </property>
        <property name="text">
-        <string notr="true">&lt;span style=&quot;font-size: 20pt&quot;&gt; KeePassXC ${VERSION}&lt;/span&gt;</string>
+        <string notr="true">&lt;span style=&quot;font-size: 20pt;&quot;&gt;PmVault ${VERSION}&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:9pt;&quot;&gt;基于 KeePassXC 与 KeePassDX 二次开发的自研跨平台密码管理器（KDBX4）&lt;/span&gt;</string>
        </property>
        <property name="margin">
         <number>0</number>
@@ -90,7 +90,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string notr="true">Website: &lt;a href=&quot;https://keepassxc.org/&quot; style=&quot;text-decoration: underline&quot;&gt;https://keepassxc.org&lt;/a&gt;</string>
+          <string notr="true">项目仓库：&lt;a href=&quot;https://github.com/yangwanpeng-110/keepassxc-pmvault&quot; style=&quot;text-decoration: underline&quot;&gt;github.com/yangwanpeng-110/keepassxc-pmvault&lt;/a&gt;</string>
          </property>
          <property name="openExternalLinks">
           <bool>true</bool>
@@ -100,7 +100,7 @@
        <item>
         <widget class="QLabel" name="label_5">
          <property name="text">
-          <string>Report bugs at: &lt;a href=&quot;https://github.com/keepassxreboot/keepassxc/issues&quot; style=&quot;text-decoration: underline;&quot;&gt;https://github.com&lt;/a&gt;</string>
+          <string>报告错误：&lt;a href=&quot;https://github.com/yangwanpeng-110/keepassxc-pmvault/issues&quot; style=&quot;text-decoration: underline;&quot;&gt;github.com/yangwanpeng-110/keepassxc-pmvault/issues&lt;/a&gt;</string>
          </property>
          <property name="openExternalLinks">
           <bool>true</bool>
@@ -132,7 +132,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>KeePassXC is distributed under the terms of the GNU General Public License (GPL) version 2 or (at your option) version 3.</string>
+          <string>PmVault 基于开源项目 KeePassXC（桌面端）与 KeePassDX（安卓端）二次开发，按 GNU 通用公共许可证（GPL）第 2 版或（任选）第 3 版发布。</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>
@@ -190,7 +190,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>Special thanks from the KeePassXC team go to debfx for creating the original KeePassX.</string>
+          <string>特别致谢 KeePassXC 团队及创建原始 KeePassX 的 debfx；安卓端基于 Kunzisoft 的 KeePassDX。PmVault 的 TOTP 第二因素、生物识别、加密审计日志与局域网 TLS 1.3 同步为自研扩展。</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>

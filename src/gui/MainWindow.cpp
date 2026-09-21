@@ -27,6 +27,7 @@
 #include <QMimeData>
 #include <QShortcut>
 #include <QStatusBar>
+#include <QEvent>
 #include <QTimer>
 #include <QToolButton>
 #include <QWindow>
@@ -1240,12 +1241,14 @@ void MainWindow::customOpenUrl(QString url)
 
 void MainWindow::openDonateUrl()
 {
-    customOpenUrl("https://keepassxc.org/donate");
+    // PmVault: no upstream donation; open the project repository.
+    customOpenUrl("https://github.com/yangwanpeng-110/keepassxc-pmvault");
 }
 
 void MainWindow::openBugReportUrl()
 {
-    customOpenUrl("https://github.com/keepassxreboot/keepassxc/issues");
+    // PmVault: report issues on the PmVault repository.
+    customOpenUrl("https://github.com/yangwanpeng-110/keepassxc-pmvault/issues");
 }
 
 void MainWindow::openGettingStartedGuide()
@@ -1260,7 +1263,8 @@ void MainWindow::openUserGuide()
 
 void MainWindow::openOnlineHelp()
 {
-    customOpenUrl("https://keepassxc.org/docs/");
+    // PmVault: no dedicated docs site yet; the repository README is the help entry.
+    customOpenUrl("https://github.com/yangwanpeng-110/keepassxc-pmvault#readme");
 }
 
 void MainWindow::openKeyboardShortcuts()
@@ -1451,18 +1455,29 @@ void MainWindow::closeEvent(QCloseEvent* event)
     if (m_appExiting) {
         saveWindowInformation();
         event->accept();
-        // PmVault: explicitly destroy the tray icon and pump its hide/destroy
-        // messages BEFORE QApplication tears its widgets down. Leaving the
-        // QSystemTrayIcon alive until global destruction triggers the known
-        // Qt5/Windows QTrayIconMessageWindow null-dereference ("memory could not
-        // be read", offset 0x8) shown when closing the app.
+        // PmVault: defer BOTH tray-icon destruction and the actual quit. When the
+        // user exits from the tray icon's context menu we are still running inside
+        // that menu's (and the QSystemTrayIcon's) activation handler. Deleting the
+        // QSystemTrayIcon synchronously here destroys it and the open menu it owns
+        // in the middle of their own event handling, which crashes on Windows with
+        // an access violation reading near 0x0008 (QTrayIconMessageWindow). Hide
+        // now and queue deletion, then quit on the next event-loop iteration after
+        // the deferred delete has flushed, so no QSystemTrayIcon is left alive for
+        // global QApplication teardown either.
         if (m_trayIcon) {
             m_trayIcon->hide();
-            delete m_trayIcon;
+            m_trayIcon->deleteLater();
             m_trayIcon = nullptr;
-            QCoreApplication::processEvents();
         }
-        m_restartRequested ? kpxcApp->restart() : QApplication::quit();
+        const bool restartRequested = m_restartRequested;
+        QTimer::singleShot(0, qApp, [restartRequested]() {
+            QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+            if (restartRequested) {
+                kpxcApp->restart();
+            } else {
+                QApplication::quit();
+            }
+        });
         return;
     }
 
@@ -1651,9 +1666,12 @@ void MainWindow::updateTrayIcon()
         }
     } else {
         if (m_trayIcon) {
-            m_trayIcon->hide();
-            delete m_trayIcon;
+            // deleteLater (not delete): this can run while the tray's context menu
+            // is being interacted with; destroying it synchronously is unsafe.
+            QSystemTrayIcon* oldTray = m_trayIcon;
             m_trayIcon = nullptr;
+            oldTray->hide();
+            oldTray->deleteLater();
         }
     }
 
