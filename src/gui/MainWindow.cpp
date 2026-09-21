@@ -29,6 +29,9 @@
 #include <QStatusBar>
 #include <QEvent>
 #include <QTimer>
+#ifdef Q_OS_WIN
+extern "C" void pmStage(const char*);
+#endif
 #include <QToolButton>
 #include <QWindow>
 
@@ -758,8 +761,14 @@ MainWindow::MainWindow()
 
 MainWindow::~MainWindow()
 {
+#ifdef Q_OS_WIN
+    pmStage("mw:dtor-enter");
+#endif
 #ifdef WITH_XC_SSHAGENT
     sshAgent()->removeAllIdentities();
+#endif
+#ifdef Q_OS_WIN
+    pmStage("mw:dtor-exit");
 #endif
 }
 
@@ -1437,7 +1446,13 @@ void MainWindow::hideEvent(QHideEvent* event)
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
+#ifdef Q_OS_WIN
+    pmStage("close:enter");
+#endif
     if (m_appExiting) {
+#ifdef Q_OS_WIN
+        pmStage("close:already-exiting");
+#endif
         event->accept();
         return;
     }
@@ -1446,6 +1461,9 @@ void MainWindow::closeEvent(QCloseEvent* event)
     // request by the system's session manager.
     if (config()->get(Config::GUI_MinimizeOnClose).toBool() && !m_appExitCalled && !isHidden()
         && !qApp->isSavingSession()) {
+#ifdef Q_OS_WIN
+        pmStage("close:minimize");
+#endif
         event->ignore();
         hideWindow();
         return;
@@ -1453,6 +1471,9 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
     m_appExiting = saveLastDatabases();
     if (m_appExiting) {
+#ifdef Q_OS_WIN
+        pmStage("close:exit-branch");
+#endif
         saveWindowInformation();
         event->accept();
         // PmVault: defer BOTH tray-icon destruction and the actual quit. When the
@@ -1468,13 +1489,25 @@ void MainWindow::closeEvent(QCloseEvent* event)
             m_trayIcon->hide();
             m_trayIcon->deleteLater();
             m_trayIcon = nullptr;
+#ifdef Q_OS_WIN
+            pmStage("close:tray-deferred");
+#endif
         }
         const bool restartRequested = m_restartRequested;
         QTimer::singleShot(0, qApp, [restartRequested]() {
+#ifdef Q_OS_WIN
+            pmStage("quit-timer:fire");
+#endif
             QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
             if (restartRequested) {
+#ifdef Q_OS_WIN
+                pmStage("quit-timer:restart");
+#endif
                 kpxcApp->restart();
             } else {
+#ifdef Q_OS_WIN
+                pmStage("quit-timer:before-quit");
+#endif
                 QApplication::quit();
             }
         });

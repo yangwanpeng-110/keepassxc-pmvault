@@ -50,9 +50,113 @@ Q_IMPORT_PLUGIN(QXcbIntegrationPlugin)
 #include <windows.h>
 #endif
 
+#ifdef Q_OS_WIN
+// PmVault diagnostics: append-only shutdown breadcrumbs and a vectored exception
+// handler. Used to localise the intermittent Windows exit crash (which happens too
+// late in process teardown for WER/ProcDump to capture). Writes to %TEMP%\pmvault_crash.log.
+#include <cstdio>
+#include <cstdlib>
+static void pmDiagWrite(const char* tag, const char* msg)
+{
+    char path[MAX_PATH] = {0};
+    DWORD n = GetEnvironmentVariableA("TEMP", path, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) {
+        return;
+    }
+    lstrcatA(path, "\\pmvault_crash.log");
+    HANDLE h = CreateFileA(path, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) {
+        return;
+    }
+    char line[1024];
+    int len = _snprintf_s(line, sizeof(line), _TRUNCATE, "[%lu] %s %s\n",
+                          static_cast<unsigned long>(GetTickCount()), tag, msg ? msg : "");
+    if (len > 0) {
+        DWORD written = 0;
+        WriteFile(h, line, static_cast<DWORD>(len), &written, nullptr);
+    }
+    CloseHandle(h);
+}
+
+extern "C" void pmStage(const char* stage)
+{
+    pmDiagWrite("STAGE", stage);
+}
+
+static LONG WINAPI pmVectoredExceptionHandler(PEXCEPTION_POINTERS ep)
+{
+    static volatile LONG s_logged = 0;
+    if (!ep || !ep->ExceptionRecord) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    const DWORD code = ep->ExceptionRecord->ExceptionCode;
+    // Access violation (and a few other fatal codes) only.
+    if (code != EXCEPTION_ACCESS_VIOLATION && code != EXCEPTION_STACK_OVERFLOW
+        && code != 0xC0000409u /*stack buffer overrun*/ && code != EXCEPTION_ILLEGAL_INSTRUCTION
+        && code != EXCEPTION_PRIV_INSTRUCTION) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    if (InterlockedExchange(&s_logged, 1) != 0) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    ULONG64 rip = 0;
+    ULONG64 faultAddr = 0;
+    ULONG accessKind = 0;
+#if defined(_M_X64) || defined(__x86_64__)
+    if (ep->ContextRecord) {
+        rip = static_cast<ULONG64>(ep->ContextRecord->Rip);
+    }
+#elif defined(_M_IX86)
+    if (ep->ContextRecord) {
+        rip = static_cast<ULONG64>(ep->ContextRecord->Eip);
+    }
+#endif
+    if (ep->ExceptionRecord->NumberParameters >= 2) {
+        accessKind = static_cast<ULONG>(ep->ExceptionRecord->ExceptionInformation[0]);
+        faultAddr = static_cast<ULONG64>(ep->ExceptionRecord->ExceptionInformation[1]);
+    }
+
+    char msg[900];
+    const char* kind = (accessKind == 0) ? "read" : (accessKind == 1 ? "write" : (accessKind == 8 ? "exec" : "?"));
+    _snprintf_s(msg, sizeof(msg), _TRUNCATE,
+                "code=0x%08lX %s addr=0x%p rip=0x%p exceptionAddress=0x%p",
+                static_cast<unsigned long>(code), kind, reinterpret_cast<void*>(faultAddr),
+                reinterpret_cast<void*>(rip), ep->ExceptionRecord->ExceptionAddress);
+    pmDiagWrite("CRASH", msg);
+
+    HMODULE mod = nullptr;
+    if (GetModuleHandleExA(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            reinterpret_cast<LPCSTR>(ep->ExceptionRecord->ExceptionAddress), &mod)
+        && mod) {
+        wchar_t wpath[MAX_PATH] = {0};
+        if (GetModuleFileNameW(mod, wpath, MAX_PATH) > 0) {
+            char modPath[MAX_PATH * 2] = {0};
+            WideCharToMultiByte(CP_UTF8, 0, wpath, -1, modPath, sizeof(modPath), nullptr, nullptr);
+            ULONG64 base = reinterpret_cast<ULONG64>(mod);
+            _snprintf_s(msg, sizeof(msg), _TRUNCATE, "module=%s base=0x%p offset=0x%llx",
+                        modPath, reinterpret_cast<void*>(base),
+                        static_cast<unsigned long long>(rip - base));
+            pmDiagWrite("CRASH", msg);
+        }
+    } else {
+        pmDiagWrite("CRASH", "module=<not in any loaded module>");
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
+
 int main(int argc, char** argv)
 {
     QT_REQUIRE_VERSION(argc, argv, QT_VERSION_STR)
+
+#ifdef Q_OS_WIN
+    AddVectoredExceptionHandler(1, pmVectoredExceptionHandler);
+    pmStage("main:start");
+    atexit([]() { pmStage("main:atexit"); });
+#endif
 
 #ifdef Q_OS_WIN
     // Set OPENSSL_* variables to an invalid location to prevent DLL injection via openssl.cnf.
@@ -194,6 +298,11 @@ int main(int argc, char** argv)
 
     Application::bootstrap(config()->get(Config::GUI_Language).toString());
 
+#ifdef Q_OS_WIN
+    QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp,
+                     []() { pmStage("aboutToQuit"); });
+#endif
+
     MainWindow mainWindow;
     PmpManager::instance()->install();
 #ifdef Q_OS_WIN
@@ -226,7 +335,13 @@ int main(int argc, char** argv)
         Application::processEvents();
     }
 
+#ifdef Q_OS_WIN
+    pmStage("main:beforeExec");
+#endif
     int exitCode = Application::exec();
+#ifdef Q_OS_WIN
+    pmStage("main:afterExec");
+#endif
 
     // Check if restart was requested
     if (exitCode == RESTART_EXITCODE) {
@@ -240,6 +355,10 @@ int main(int argc, char** argv)
 #endif
 
     Utils::resetTextStreams();
+
+#ifdef Q_OS_WIN
+    pmStage("main:end");
+#endif
 
     return exitCode;
 }

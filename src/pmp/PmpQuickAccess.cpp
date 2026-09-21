@@ -49,6 +49,11 @@ PmpQuickAccess* PmpQuickAccess::instance()
     return s_inst;
 }
 
+#ifdef Q_OS_WIN
+extern "C" void pmStage(const char*);
+#endif
+
+
 void PmpQuickAccess::install()
 {
     if (m_installed) {
@@ -297,12 +302,16 @@ void PmpQuickAccess::shutdown()
     // QApplication, so the native event filter and thread-global hotkey must be
     // torn down before the Windows tray/window teardown (avoids a crash on exit).
 #ifdef Q_OS_WIN
+    pmStage("qa:shutdown-enter");
     unregisterHotkey();
 #endif
     if (m_installed) {
         qApp->removeNativeEventFilter(this);
         m_installed = false;
     }
+#ifdef Q_OS_WIN
+    pmStage("qa:shutdown-exit");
+#endif
 }
 
 void PmpQuickAccess::showSettings()
