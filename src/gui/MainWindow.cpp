@@ -109,9 +109,33 @@ static void pmCoreDiagWrite(const char* tag, const char* msg)
     }
     CloseHandle(h);
 }
+// Shutdown breadcrumbs are kept in an in-memory ring only. Nothing is written on
+// a normal run; the ring is flushed to the crash log by the vectored exception
+// handler in main.cpp when (and only when) a fatal fault occurs.
+static const int PM_STAGE_RING = 64;
+static char pm_stageRing[PM_STAGE_RING][160];
+static volatile LONG pm_stageCount = 0;
+
 extern "C" void pmStage(const char* stage)
 {
-    pmCoreDiagWrite("STAGE", stage);
+    if (!stage) {
+        return;
+    }
+    LONG slot = InterlockedIncrement(&pm_stageCount) - 1;
+    slot %= PM_STAGE_RING;
+    _snprintf_s(pm_stageRing[slot], sizeof(pm_stageRing[slot]), _TRUNCATE, "[%lu] STAGE %s",
+                static_cast<unsigned long>(GetTickCount()), stage);
+}
+
+extern "C" void pmDumpStages()
+{
+    LONG total = InterlockedCompareExchange(&pm_stageCount, 0, 0);
+    LONG n = total < PM_STAGE_RING ? total : PM_STAGE_RING;
+    LONG start = total < PM_STAGE_RING ? 0 : (total % PM_STAGE_RING);
+    for (LONG k = 0; k < n; ++k) {
+        LONG idx = (start + k) % PM_STAGE_RING;
+        pmCoreDiagWrite("TRACE", pm_stageRing[idx]);
+    }
 }
 #endif
 

@@ -80,9 +80,10 @@ static void pmDiagWrite(const char* tag, const char* msg)
     CloseHandle(h);
 }
 
-// pmStage is defined in MainWindow.cpp (libkeepassx_core, which is also linked
-// into keepassxc-cli); main.cpp only declares it here.
+// pmStage / pmDumpStages are defined in MainWindow.cpp (libkeepassx_core, which
+// is also linked into keepassxc-cli); main.cpp only declares them here.
 extern "C" void pmStage(const char* stage);
+extern "C" void pmDumpStages();
 
 static void pmFrameInfo(ULONG64 pc, char* out, size_t n)
 {
@@ -146,6 +147,8 @@ static LONG WINAPI pmVectoredExceptionHandler(PEXCEPTION_POINTERS ep)
                 "code=0x%08lX %s addr=0x%p rip=0x%p exceptionAddress=0x%p",
                 static_cast<unsigned long>(code), kind, reinterpret_cast<void*>(faultAddr),
                 reinterpret_cast<void*>(rip), ep->ExceptionRecord->ExceptionAddress);
+    // Flush the in-memory shutdown breadcrumbs first, then the fault details.
+    pmDumpStages();
     pmDiagWrite("CRASH", msg);
 
     HMODULE mod = nullptr;
