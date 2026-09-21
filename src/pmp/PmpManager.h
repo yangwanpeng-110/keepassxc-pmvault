@@ -12,10 +12,12 @@
 #include <QEvent>
 #include <QString>
 #include <QVector>
+#include <QPointer>
 
 class Database;
 class DatabaseWidget;
 class QWidget;
+class QMenuBar;
 
 class PmpManager : public QObject
 {
@@ -69,6 +71,11 @@ private:
     Database* currentDatabase(DatabaseWidget** outWidget = nullptr) const;
 
     bool m_installed = false;
+    // Cached at install time; never re-derived via QMainWindow::menuBar()
+    // during teardown (that call dereferences the already-deleted layout and
+    // crashes in QLayout::menuBar while the menu bar is being destroyed).
+    QPointer<QMenuBar> m_menuBar;
+    bool m_appShuttingDown = false;
 
 protected:
     // Re-adds the PmVault menu if Qt ever removes it while rebuilding the menu bar.

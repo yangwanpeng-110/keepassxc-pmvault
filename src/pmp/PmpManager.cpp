@@ -155,12 +155,18 @@ void PmpManager::install()
         return;
     }
     m_installed = true;
+    m_appShuttingDown = false;
+    m_menuBar = mw->menuBar();
 
     ensureMenu();
 
     // PmVault: keep our menu alive even if Qt rebuilds/repopulates the menu bar
     // (root cause of the "LAN Sync" entry disappearing after a sync or tab change).
-    mw->menuBar()->installEventFilter(this);
+    // The filter is installed on the cached pointer; it must never call
+    // QMainWindow::menuBar() (see eventFilter / ensureMenu).
+    if (m_menuBar) {
+        m_menuBar->installEventFilter(this);
+    }
     if (auto* tabs = mw->findChild<DatabaseTabWidget*>()) {
         connect(tabs, &DatabaseTabWidget::databaseOpened, this, [this](DatabaseWidget*) { ensureMenu(); });
         connect(tabs, &DatabaseTabWidget::databaseUnlocked, this, [this](DatabaseWidget*) { ensureMenu(); });
@@ -172,7 +178,9 @@ void PmpManager::install()
     // Tear down the global hotkey / native event filter while QApplication is
     // still alive (the singleton outlives QApplication; leaking the filter into
     // global destruction contributes to the Windows crash on exit).
-    connect(qApp, &QCoreApplication::aboutToQuit, this, []() {
+    connect(qApp, &QCoreApplication::aboutToQuit, this, [this]() {
+        // Stop touching the widget tree before any MainWindow/menu-bar teardown.
+        m_appShuttingDown = true;
         PmpQuickAccess::instance()->shutdown();
     });
 
@@ -186,14 +194,15 @@ void PmpManager::install()
 void PmpManager::ensureMenu()
 {
     MainWindow* mw = getMainWindow();
-    if (!mw || !mw->menuBar()) {
+    QMenuBar* bar = m_menuBar.data();
+    if (!mw || !bar) {
         return;
     }
     const QString kMenuObj = QStringLiteral("pmvault_menu");
-    if (mw->menuBar()->findChild<QMenu*>(kMenuObj)) {
+    if (bar->findChild<QMenu*>(kMenuObj)) {
         return; // already present
     }
-    auto* menu = mw->menuBar()->addMenu(QObject::tr("PmVault"));
+    auto* menu = bar->addMenu(QObject::tr("PmVault"));
     menu->setObjectName(kMenuObj);
     // PmVault: database management lives only in the recent-databases history
     // menu ("Manage databases…") to avoid duplicate entry points.
@@ -212,12 +221,25 @@ void PmpManager::ensureMenu()
 
 bool PmpManager::eventFilter(QObject* watched, QEvent* event)
 {
-    // When the menu bar loses a child (a menu being torn down/rebuilt), re-check on
-    // the next event-loop iteration whether our PmVault menu is still there and
-    // recreate it if not. Queued so we never mutate the widget tree mid-event.
-    MainWindow* mw = getMainWindow();
-    if (mw && watched == mw->menuBar() && event->type() == QEvent::ChildRemoved) {
-        QTimer::singleShot(0, this, [this]() { ensureMenu(); });
+    // IMPORTANT: never call QMainWindow::menuBar() here. During MainWindow teardown
+    // the QMainWindow layout is deleted before its child QMenuBar finishes
+    // destroying; Qt then delivers ChildRemoved events (the bar deleting its menus)
+    // through this filter, and QMainWindow::menuBar() dereferences the null layout
+    // (QLayout::menuBar reads this+0x8) -> access violation on exit. Compare
+    // against the cached, QPointer-guarded menu bar instead.
+    if (m_menuBar && watched == m_menuBar.data()) {
+        if (event->type() == QEvent::Destroy) {
+            m_menuBar.clear();
+        } else if (!m_appShuttingDown && event->type() == QEvent::ChildRemoved) {
+            // Re-check on the next event-loop iteration whether our PmVault menu is
+            // still there and recreate it if not. Queued so we never mutate the
+            // widget tree mid-event; suppressed entirely during shutdown.
+            QTimer::singleShot(0, this, [this]() {
+                if (!m_appShuttingDown) {
+                    ensureMenu();
+                }
+            });
+        }
     }
     return QObject::eventFilter(watched, event);
 }
