@@ -79,10 +79,9 @@ static void pmDiagWrite(const char* tag, const char* msg)
     CloseHandle(h);
 }
 
-extern "C" void pmStage(const char* stage)
-{
-    pmDiagWrite("STAGE", stage);
-}
+// pmStage is defined in MainWindow.cpp (libkeepassx_core, which is also linked
+// into keepassxc-cli); main.cpp only declares it here.
+extern "C" void pmStage(const char* stage);
 
 static LONG WINAPI pmVectoredExceptionHandler(PEXCEPTION_POINTERS ep)
 {

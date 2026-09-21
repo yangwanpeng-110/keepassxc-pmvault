@@ -29,9 +29,6 @@
 #include <QStatusBar>
 #include <QEvent>
 #include <QTimer>
-#ifdef Q_OS_WIN
-extern "C" void pmStage(const char*);
-#endif
 #include <QToolButton>
 #include <QWindow>
 
@@ -80,6 +77,42 @@ extern "C" void pmStage(const char*);
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS) && !defined(QT_NO_DBUS)
 #include "mainwindowadaptor.h"
+#endif
+
+#ifdef Q_OS_WIN
+// PmVault shutdown diagnostics (see the vectored exception handler in main.cpp).
+// Defined here inside libkeepassx_core so both the GUI executable and
+// keepassxc-cli (which also links this library) resolve the symbol.
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#include <cstdio>
+static void pmCoreDiagWrite(const char* tag, const char* msg)
+{
+    char path[MAX_PATH] = {0};
+    DWORD n = GetEnvironmentVariableA("TEMP", path, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) {
+        return;
+    }
+    lstrcatA(path, "\\pmvault_crash.log");
+    HANDLE h = CreateFileA(path, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h == INVALID_HANDLE_VALUE) {
+        return;
+    }
+    char line[1024];
+    int len = _snprintf_s(line, sizeof(line), _TRUNCATE, "[%lu] %s %s\n",
+                          static_cast<unsigned long>(GetTickCount()), tag, msg ? msg : "");
+    if (len > 0) {
+        DWORD written = 0;
+        WriteFile(h, line, static_cast<DWORD>(len), &written, nullptr);
+    }
+    CloseHandle(h);
+}
+extern "C" void pmStage(const char* stage)
+{
+    pmCoreDiagWrite("STAGE", stage);
+}
 #endif
 
 const QString MainWindow::BaseWindowTitle = "KeePassXC";
