@@ -56,6 +56,7 @@ Q_IMPORT_PLUGIN(QXcbIntegrationPlugin)
 // late in process teardown for WER/ProcDump to capture). Writes to %TEMP%\pmvault_crash.log.
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 static void pmDiagWrite(const char* tag, const char* msg)
 {
     char path[MAX_PATH] = {0};
@@ -82,6 +83,28 @@ static void pmDiagWrite(const char* tag, const char* msg)
 // pmStage is defined in MainWindow.cpp (libkeepassx_core, which is also linked
 // into keepassxc-cli); main.cpp only declares it here.
 extern "C" void pmStage(const char* stage);
+
+static void pmFrameInfo(ULONG64 pc, char* out, size_t n)
+{
+    HMODULE m = nullptr;
+    if (GetModuleHandleExA(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            reinterpret_cast<LPCSTR>(static_cast<uintptr_t>(pc)), &m)
+        && m) {
+        char full[MAX_PATH * 2] = {0};
+        if (GetModuleFileNameA(m, full, sizeof(full))) {
+            const char* base = full;
+            const char* slash = strrchr(full, '\\');
+            if (slash) {
+                base = slash + 1;
+            }
+            _snprintf_s(out, n, _TRUNCATE, "%s+0x%llx", base,
+                        static_cast<unsigned long long>(pc - reinterpret_cast<ULONG64>(m)));
+            return;
+        }
+    }
+    _snprintf_s(out, n, _TRUNCATE, "0x%p", reinterpret_cast<void*>(pc));
+}
 
 static LONG WINAPI pmVectoredExceptionHandler(PEXCEPTION_POINTERS ep)
 {
@@ -143,6 +166,35 @@ static LONG WINAPI pmVectoredExceptionHandler(PEXCEPTION_POINTERS ep)
     } else {
         pmDiagWrite("CRASH", "module=<not in any loaded module>");
     }
+
+#if defined(_M_X64) || defined(__x86_64__)
+    if (ep->ContextRecord) {
+        CONTEXT uc = *reinterpret_cast<CONTEXT*>(ep->ContextRecord);
+        for (int f = 0; f < 24; ++f) {
+            char fi[600];
+            pmFrameInfo(uc.Rip, fi, sizeof(fi));
+            _snprintf_s(msg, sizeof(msg), _TRUNCATE, "frame%02d %s", f, fi);
+            pmDiagWrite("STACK", msg);
+
+            DWORD64 imgBase = 0;
+            PRUNTIME_FUNCTION rf = RtlLookupFunctionEntry(uc.Rip, &imgBase, nullptr);
+            CONTEXT next = uc;
+            if (rf) {
+                PVOID handlerData = nullptr;
+                DWORD64 estFrame = 0;
+                RtlVirtualUnwind(UNW_FLAG_NHANDLER, imgBase, uc.Rip, rf, &next, &handlerData,
+                                 &estFrame, nullptr);
+            } else {
+                next.Rip = *reinterpret_cast<DWORD64*>(uc.Rsp);
+                next.Rsp = uc.Rsp + 8;
+            }
+            if (next.Rip == uc.Rip || next.Rip == 0) {
+                break;
+            }
+            uc = next;
+        }
+    }
+#endif
     return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif
