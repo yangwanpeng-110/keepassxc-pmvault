@@ -115,8 +115,14 @@ PmpManager::PmpManager(QObject* parent)
 
 PmpManager* PmpManager::instance()
 {
-    static PmpManager s_instance;
-    return &s_instance;
+    // PmVault: intentionally never destroyed. This is a QObject singleton whose
+    // implicit ~QObject would otherwise run during static deinitialisation,
+    // AFTER QApplication has been destroyed (QApplication is a local in main()),
+    // which intermittently crashes on Windows with an access violation during
+    // process teardown (no WER/debugger dump is produced because it happens under
+    // the loader lock in DLL_PROCESS_DETACH). The OS reclaims the memory.
+    static PmpManager* s_instance = new PmpManager();
+    return s_instance;
 }
 
 Database* PmpManager::currentDatabase(DatabaseWidget** outWidget) const

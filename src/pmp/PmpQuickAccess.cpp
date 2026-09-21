@@ -40,8 +40,13 @@
 
 PmpQuickAccess* PmpQuickAccess::instance()
 {
-    static PmpQuickAccess s_inst;
-    return &s_inst;
+    // PmVault: intentionally never destroyed (see PmpManager::instance). This is
+    // a QObject + QAbstractNativeEventFilter singleton; its ~QObject used to run
+    // after QApplication was gone and intermittently crashed on exit. The native
+    // event filter and global hotkey are explicitly removed in shutdown() while
+    // QApplication is still alive (connected to aboutToQuit).
+    static PmpQuickAccess* s_inst = new PmpQuickAccess();
+    return s_inst;
 }
 
 void PmpQuickAccess::install()
