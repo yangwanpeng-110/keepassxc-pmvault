@@ -5,6 +5,7 @@
 #include "PmpSync.h"
 
 #include "PmpAuditLog.h"
+#include "PmpFileLogger.h"
 #include "PmpConfig.h"
 #include "PmpPlatform.h"
 
@@ -21,6 +22,7 @@
 #include <QJsonObject>
 #include <QTimer>
 #include <QCryptographicHash>
+#include <QSet>
 
 #include <QSslCertificate>
 #include <QSslCipher>
@@ -48,6 +50,36 @@ namespace
     const QString K_LASTHASH = QStringLiteral("PM:LastSyncHash");
     const QString K_TOMBS = QStringLiteral("PM:Tombstones");
     const QString K_ORIGIN = QStringLiteral("PM:Origin");
+    // One-time marker: built-in empty templates mistakenly synced into root were removed.
+    const QString K_CLEANED = QStringLiteral("PM:CleanedOrphanTemplates");
+
+    // KeePassDX built-in entry-template blueprint titles (Plan A: never synced).
+    const QSet<QString> builtinTemplateTitles()
+    {
+        return {
+            QStringLiteral("Email"),
+            QStringLiteral("Wi-Fi"),
+            QStringLiteral("Notes"),
+            QStringLiteral("ID Card"),
+            QStringLiteral("Debit / Credit Card"),
+            QStringLiteral("Bank"),
+            QStringLiteral("Cryptocurrency wallet")
+        };
+    }
+
+    // A snapshot is an empty built-in template only when its title matches and it
+    // carries no username / password / URL value (avoids deleting real entries).
+    bool snapshotIsEmptyTemplate(const QJsonObject& fields)
+    {
+        const QString title =
+            fields.value(EntryAttributes::TitleKey).toString().trimmed();
+        if (!builtinTemplateTitles().contains(title)) {
+            return false;
+        }
+        return fields.value(EntryAttributes::UserNameKey).toString().isEmpty()
+               && fields.value(EntryAttributes::PasswordKey).toString().isEmpty()
+               && fields.value(EntryAttributes::URLKey).toString().isEmpty();
+    }
 
     QString uuidStr(const Entry* e)
     {
@@ -113,6 +145,9 @@ PmpSyncEngine::PmpSyncEngine(QObject* parent)
 void PmpSyncEngine::note(const QString& text)
 {
     emit logMessage(text);
+    // Mirror every phase line to the plaintext diagnostic log (connection-level
+    // data only; callers must never put secrets in note()).
+    PmpFileLogger::log(QStringLiteral("phase"), text);
     if (m_trace.size() > 2400) {
         m_trace.remove(0, m_trace.size() - 2000);
     }
@@ -169,6 +204,13 @@ void PmpSyncEngine::start(Database* db, const Options& options)
     }
     m_selfNode = m_identity.nodeId;
     m_dbId = PmpPlatform::dbId(db ? db->filePath() : QString());
+
+    PmpFileLogger::log(QStringLiteral("start"),
+                       QStringLiteral("role=%1 target=%2:%3 db=%4")
+                           .arg(options.listen ? QStringLiteral("listen") : QStringLiteral("connect"),
+                                options.host)
+                           .arg(options.port)
+                           .arg(m_dbId));
 
     note(QObject::tr("OpenSSL 版本：%1；编译期 SSL 版本：%2")
              .arg(QSslSocket::sslLibraryVersionString(),
@@ -456,9 +498,17 @@ PmpSync::State PmpSyncEngine::buildLocalState()
     if (!m_db || !m_db->rootGroup()) {
         return state;
     }
+    // One-time removal of built-in empty templates an older build synced into root.
+    m_orphanCleaned = cleanupOrphanTemplates();
+
     Group* root = m_db->rootGroup();
     const QList<Entry*> entries = root->entriesRecursive(false);
     for (Entry* e : entries) {
+        // Plan A: the KDBX EntryTemplates group is a local authoring aid and is
+        // never exchanged over the LAN.
+        if (isInTemplatesGroup(e)) {
+            continue;
+        }
         const QString uuid = uuidStr(e);
 
         // Snapshot attributes (never the internal PM: keys).
@@ -509,6 +559,70 @@ PmpSync::State PmpSyncEngine::buildLocalState()
         state.tombs.insert(t.uuid, t.vclock);
     }
     return state;
+}
+
+bool PmpSyncEngine::isInTemplatesGroup(const Entry* e) const
+{
+    if (!e || !m_db || !m_db->metadata()) {
+        return false;
+    }
+    const Group* templatesGroup = m_db->metadata()->entryTemplatesGroup();
+    if (!templatesGroup) {
+        return false;
+    }
+    const Group* g = e->group();
+    while (g) {
+        if (g == templatesGroup) {
+            return true;
+        }
+        g = g->parentGroup();
+    }
+    return false;
+}
+
+int PmpSyncEngine::cleanupOrphanTemplates()
+{
+    if (!m_db || !m_db->rootGroup() || !m_db->metadata()) {
+        return 0;
+    }
+    CustomData* meta = m_db->metadata()->customData();
+    if (meta->value(K_CLEANED) == QLatin1String("1")) {
+        return 0;
+    }
+
+    Group* root = m_db->rootGroup();
+    int removed = 0;
+    // Only direct children of root are candidates: the sync merge always places
+    // incoming entries in root, whereas a user's own "Notes"/"Email" entry would
+    // normally live inside a named group. Combined with the origin marker and the
+    // empty-credential requirement this is deliberately conservative.
+    const QList<Entry*> direct = root->entries();
+    for (Entry* e : direct) {
+        if (!builtinTemplateTitles().contains(e->title().trimmed())) {
+            continue;
+        }
+        if (e->customData()->value(K_ORIGIN).compare(QLatin1String("mobile"), Qt::CaseInsensitive) != 0) {
+            continue;
+        }
+        if (!e->username().isEmpty() || !e->password().isEmpty() || !e->url().isEmpty()) {
+            continue;
+        }
+        // No tombstone: the phone keeps these blueprints in its local templates
+        // group, and both sides now exclude templates from the manifest, so a
+        // local delete does not propagate and cannot delete the phone templates.
+        root->removeEntry(e);
+        ++removed;
+    }
+
+    meta->set(K_CLEANED, QStringLiteral("1"));
+    m_db->markAsModified();
+    if (removed > 0) {
+        note(QObject::tr("已移除此前误同步到根分组的 %1 个内置空模板（模板仍保留在手机本地，不再参与同步）。")
+                 .arg(removed));
+        PmpFileLogger::log(QStringLiteral("cleanup"),
+                          QStringLiteral("removed orphan templates: %1").arg(removed));
+    }
+    return removed;
 }
 
 QStringList PmpSyncEngine::computeWants(const QJsonObject& remoteManifest)
@@ -683,6 +797,13 @@ void PmpSyncEngine::applyMergeAndReply()
             continue;
         }
         if (a.kind == ActUpsert) {
+            // Defensive: never accept built-in empty templates from a peer that
+            // still runs an older build that synced them.
+            if (snapshotIsEmptyTemplate(a.snap.fields)) {
+                PmpFileLogger::log(QStringLiteral("skip"),
+                                  QStringLiteral("reject incoming empty template"));
+                continue;
+            }
             const QUuid quuid = QUuid::fromString(a.snap.uuid);
             Entry* e = root->findEntryByUuid(quuid);
             bool created = false;
@@ -736,7 +857,7 @@ void PmpSyncEngine::applyMergeAndReply()
         }
     }
 
-    if (deleted > 0 || upserted > 0 || copies > 0) {
+    if (deleted > 0 || upserted > 0 || copies > 0 || m_orphanCleaned > 0) {
         m_db->metadata()->customData()->set(
             K_TOMBS, QString::fromUtf8(QJsonDocument(tombs).toJson(QJsonDocument::Compact)));
         m_db->markAsModified();
@@ -813,6 +934,7 @@ void PmpSyncEngine::fail(const QString& message)
         m_server->close();
     }
     const QByteArray detail = (traceTail() + QStringLiteral(" || ") + message).toUtf8();
+    PmpFileLogger::log(QStringLiteral("fail"), message);
     PmpAuditLog::instance()->record(PmpAuditLog::EvSyncFailed, PmpAuditLog::OcFailure, PmpAuditLog::FldNone,
                                     PmpAuditLog::TgtLanPeer, detail.left(600));
     m_report.ok = false;

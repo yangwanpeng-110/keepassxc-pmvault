@@ -565,6 +565,11 @@ void PmpManager::showSync()
                                          .arg(r.upserted)
                                          .arg(r.deleted)
                                          .arg(r.conflictCopies));
+                // PmVault: explicit completion notice so the user does not have to watch the log.
+                QMessageBox::information(
+                    &dlg, tr("局域网同步完成"),
+                    tr("局域网同步完成。\n更新 %1 条，删除 %2 条，冲突副本 %3 条。")
+                        .arg(r.upserted).arg(r.deleted).arg(r.conflictCopies));
             } else {
                 log->appendPlainText(tr("失败：%1").arg(r.message));
             }

@@ -1,10 +1,13 @@
 /*
  * PmVault Browser Bridge - content script.
  * Shows a small, non-intrusive bar on pages with password fields:
- *   - "Fill": query the desktop database (raises the desktop unlock dialog if
+ *   - "填充": query the desktop database (raises the desktop unlock dialog if
  *     locked), then fill username + password with native input events.
- *   - "Save": after a login form is submitted, offer to store the typed
+ *   - "保存": after a login form is submitted, offer to store the typed
  *     credentials in the database.
+ *   - "更新密码": Edge-like behavior — when the submitted username already
+ *     exists for this site but the password differs, offer to update that
+ *     existing entry (by uuid) instead of blindly creating a duplicate.
  * All secrets come from / go to the background worker; nothing is persisted here.
  */
 (function () {
@@ -200,12 +203,35 @@
     });
   }
 
+  function postSave(payload, btn, busyText) {
+    btn.disabled = true;
+    const oldText = btn.textContent;
+    btn.textContent = busyText;
+    return send(Object.assign({ type: "save", url: location.href, title: document.title }, payload))
+      .then((resp) => {
+        if (resp.ok) {
+          removeBar();
+        } else {
+          btn.disabled = false;
+          btn.textContent = oldText;
+          const bar = document.getElementById("pmvault-bar");
+          if (bar) {
+            bar.querySelector(".pmvault-text").textContent = resp.error || "保存失败";
+          }
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      });
+  }
+
   function showSaveBar(username, password) {
     // Avoid duplicate bars.
     if (document.getElementById("pmvault-bar") && document.getElementById("pmvault-bar").dataset.mode === "save") {
       return;
     }
-    const bar = showBar("", (b) => {
+    showBar("", (b) => {
       b.dataset.mode = "save";
       b.querySelector(".pmvault-text").textContent = "保存该登录到 PmVault？";
       const save = document.createElement("button");
@@ -216,26 +242,73 @@
       ignore.textContent = "忽略";
       b.appendChild(save);
       b.appendChild(ignore);
-      save.addEventListener("click", async () => {
-        save.disabled = true;
-        save.textContent = "保存中…";
-        const resp = await send({
-          type: "save",
-          url: location.href,
-          title: document.title,
-          username,
-          password
-        });
-        if (resp.ok) {
-          removeBar();
-        } else {
-          save.disabled = false;
-          save.textContent = "保存";
-          b.querySelector(".pmvault-text").textContent = resp.error || "保存失败";
-        }
-      });
+      save.addEventListener("click", () =>
+        postSave({ username, password }, save, "保存中…")
+      );
       ignore.addEventListener("click", removeBar);
     });
+  }
+
+  // Edge-like: same site + same username but a different submitted password.
+  function showUpdateBar(existing, username, password) {
+    if (document.getElementById("pmvault-bar") && document.getElementById("pmvault-bar").dataset.mode === "update") {
+      return;
+    }
+    showBar("", (b) => {
+      b.dataset.mode = "update";
+      b.querySelector(".pmvault-text").textContent =
+        "PmVault 检测到账号 " + username + " 的密码已更改，是否更新已保存的密码？";
+      const update = document.createElement("button");
+      update.className = "pmvault-primary";
+      update.textContent = "更新密码";
+      const create = document.createElement("button");
+      create.className = "pmvault-ghost";
+      create.textContent = "新建条目";
+      const ignore = document.createElement("button");
+      ignore.className = "pmvault-ghost";
+      ignore.textContent = "忽略";
+      b.appendChild(update);
+      b.appendChild(create);
+      b.appendChild(ignore);
+      // Updating sends the existing entry uuid so the desktop app overwrites it.
+      update.addEventListener("click", () =>
+        postSave({ username, password, uuid: existing.uuid || "" }, update, "更新中…")
+      );
+      create.addEventListener("click", () =>
+        postSave({ username, password }, create, "保存中…")
+      );
+      ignore.addEventListener("click", removeBar);
+    });
+  }
+
+  // Decide between "update existing", "save new", or "do nothing" by comparing
+  // the submitted credentials against entries already saved for this URL.
+  async function offerSaveOrUpdate(username, password) {
+    let entries = [];
+    try {
+      const resp = await send({ type: "query", url: location.href });
+      if (resp.ok) {
+        entries = resp.entries || [];
+      }
+    } catch (e) {
+      entries = [];
+    }
+
+    if (username) {
+      const sameAccount = entries.filter(
+        (e) => (e.login || "").trim().toLowerCase() === username.trim().toLowerCase()
+      );
+      if (sameAccount.length) {
+        const changed = sameAccount.find((e) => e.password && e.password !== password);
+        if (changed) {
+          showUpdateBar(changed, username, password);
+          return;
+        }
+        // Same account, identical password: nothing to do.
+        return;
+      }
+    }
+    showSaveBar(username, password);
   }
 
   // Capture credentials when a login form is submitted.
@@ -263,7 +336,7 @@
       if (!password) {
         return;
       }
-      setTimeout(() => showSaveBar(username, password), 400);
+      setTimeout(() => offerSaveOrUpdate(username, password), 400);
     },
     true
   );

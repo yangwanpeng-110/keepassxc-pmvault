@@ -101,6 +101,12 @@ private:
     void sendHelloAndManifest();
     QJsonObject buildManifestJson();
     PmpSync::State buildLocalState();
+    // PmVault Plan A: remove built-in empty entry-template blueprints that older
+    // builds mistakenly synced into the root group. Runs once per database and
+    // never writes tombstones (the phone keeps its local templates group).
+    int cleanupOrphanTemplates();
+    // True if the entry sits inside the KDBX configured EntryTemplates group.
+    bool isInTemplatesGroup(const class Entry* e) const;
     QStringList computeWants(const QJsonObject& remoteManifest);
     void sendEntries(const QStringList& uuids);
     void receiveEntries(const QJsonArray& items);
@@ -123,6 +129,7 @@ private:
     QJsonObject m_remoteManifest;
     QHash<QString, PmpSync::Snapshot> m_remoteSnaps;
     int m_expectedEntries = 0;
+    int m_orphanCleaned = 0;
     bool m_applied = false;
     bool m_peerApplied = false;
     bool m_done = false;

@@ -250,6 +250,13 @@ MainWindow::MainWindow()
     connect(m_lastDatabasesActions, SIGNAL(triggered(QAction*)), this, SLOT(openRecentDatabase(QAction*)));
     connect(m_ui->menuRecentDatabases, SIGNAL(aboutToShow()), this, SLOT(updateLastDatabasesMenu()));
 
+    // PmVault: promote "Manage databases…" to the top-level File/Database menu
+    // (one level above the "Recent databases" submenu), keeping a single entry point.
+    QAction* manageDatabasesAction = new QAction(tr("管理数据库…"), m_ui->menuFile);
+    connect(manageDatabasesAction, &QAction::triggered, m_ui->welcomeWidget,
+            &WelcomeWidget::manageAllDatabases);
+    m_ui->menuFile->insertAction(m_ui->menuRecentDatabases->menuAction(), manageDatabasesAction);
+
     m_copyAdditionalAttributeActions = new QActionGroup(m_ui->menuEntryCopyAttribute);
     m_actionMultiplexer.connect(
         m_copyAdditionalAttributeActions, SIGNAL(triggered(QAction*)), SLOT(copyAttribute(QAction*)));
@@ -834,11 +841,6 @@ bool MainWindow::refreshHardwareKeys()
 void MainWindow::updateLastDatabasesMenu()
 {
     m_ui->menuRecentDatabases->clear();
-
-    // PmVault: full database manager (open / reveal / remove / delete).
-    QAction* manageAction = m_ui->menuRecentDatabases->addAction(tr("管理数据库…"));
-    connect(manageAction, &QAction::triggered, m_ui->welcomeWidget, &WelcomeWidget::manageAllDatabases);
-    m_ui->menuRecentDatabases->addSeparator();
 
     const QStringList lastDatabases = config()->get(Config::LastDatabases).toStringList();
     for (const QString& database : lastDatabases) {

@@ -437,12 +437,16 @@
         <translation>备注使用等宽字体</translation>
     </message>
     <message>
-        <source>Minimize instead of app exit</source>
-        <translation>最小化而不是退出应用程序</translation>
+        <source>When clicking the close button (X), minimize instead of quitting the app</source>
+        <translation>点击标题栏关闭按钮（X）时最小化窗口，而不是退出程序</translation>
+    </message>
+    <message>
+        <source>Clicking the title-bar close button (X) hides the window instead of quitting. With a tray icon shown it hides to the system tray; otherwise it minimizes to the taskbar. Quit from the tray icon menu or File &gt; Quit.</source>
+        <translation>点击标题栏关闭按钮（X）时仅隐藏窗口、不退出程序：已显示托盘图标则隐藏到系统托盘，否则最小化到任务栏。需要退出时，请用托盘图标菜单或“文件 &gt; 退出”。</translation>
     </message>
     <message>
         <source>Show a system tray icon</source>
-        <translation>显示任务栏图标</translation>
+        <translation>显示系统托盘图标（通知区域）</translation>
     </message>
     <message>
         <source>Tray icon type</source>
@@ -453,8 +457,12 @@
         <translation>任务栏图标类型：</translation>
     </message>
     <message>
-        <source>Hide window to system tray when minimized</source>
-        <translation>将窗口最小化至任务栏</translation>
+        <source>When clicking the minimize button (-), hide to the system tray</source>
+        <translation>点击标题栏最小化按钮（-）时隐藏到系统托盘，而不是任务栏</translation>
+    </message>
+    <message>
+        <source>Clicking the title-bar minimize button (-) hides the window to the system tray instead of the taskbar. Turn off to minimize to the taskbar as usual. Requires a system tray icon.</source>
+        <translation>点击标题栏最小化按钮（-）时把窗口隐藏到系统托盘，而不是任务栏。关闭此项则照常最小化到任务栏。该选项需要先显示系统托盘图标。</translation>
     </message>
     <message>
         <source>Reset settings to default…</source>

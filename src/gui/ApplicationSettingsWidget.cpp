@@ -581,6 +581,10 @@ void ApplicationSettingsWidget::systrayToggled(bool checked)
     m_generalUi->trayIconAppearance->setEnabled(checked);
     m_generalUi->trayIconAppearanceLabel->setEnabled(checked);
     m_generalUi->systrayMinimizeToTrayCheckBox->setEnabled(checked);
+    // PmVault: hiding to the tray is impossible without a tray icon; clear stale state.
+    if (!checked) {
+        m_generalUi->systrayMinimizeToTrayCheckBox->setChecked(false);
+    }
 }
 
 void ApplicationSettingsWidget::rememberDatabasesToggled(bool checked)

@@ -940,8 +940,11 @@
               </item>
               <item>
                <widget class="QCheckBox" name="minimizeOnCloseCheckBox">
+                <property name="toolTip">
+                 <string>Clicking the title-bar close button (X) hides the window instead of quitting. With a tray icon shown it hides to the system tray; otherwise it minimizes to the taskbar. Quit from the tray icon menu or File &gt; Quit.</string>
+                </property>
                 <property name="text">
-                 <string>Minimize instead of app exit</string>
+                 <string>When clicking the close button (X), minimize instead of quitting the app</string>
                 </property>
                </widget>
               </item>
@@ -1092,8 +1095,11 @@
                        <verstretch>0</verstretch>
                       </sizepolicy>
                      </property>
+                     <property name="toolTip">
+                      <string>Clicking the title-bar minimize button (-) hides the window to the system tray instead of the taskbar. Turn off to minimize to the taskbar as usual. Requires a system tray icon.</string>
+                     </property>
                      <property name="text">
-                      <string>Hide window to system tray when minimized</string>
+                      <string>When clicking the minimize button (-), hide to the system tray</string>
                      </property>
                     </widget>
                    </item>
